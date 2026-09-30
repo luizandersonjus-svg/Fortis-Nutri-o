@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FORTIS — Calorias, Macros e Progresso</title>
+<meta name="description" content="Acompanhe calorias, macronutrientes, treino e progresso no método FORTIS. Funciona offline, dados só no seu aparelho.">
+<meta name="theme-color" content="#0B0B0B">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FORTIS">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand"><span id="brandMark"></span><div class="bt" id="brandTitle"></div></div>
+    <div class="viewtitle" id="viewtitle"></div>
+  </header>
+  <main id="view"></main>
+  <nav id="tabbar" aria-label="Navegação"></nav>
+</div>
+<datalist id="dlFoods"></datalist>
+<div id="modal"><div class="sheet" id="sheet"></div></div>
+<noscript><div style="padding:20px;text-align:center">O app FORTIS precisa de JavaScript ativado.</div></noscript>
+<script src="foods.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
