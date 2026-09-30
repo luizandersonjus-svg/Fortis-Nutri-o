@@ -11,7 +11,7 @@ Uso:
 import base64
 import re
 
-URL_BASE = "https://SEU-DOMINIO-AQUI"  # <-- troque pelo endereço final do app
+URL_BASE = "https://luizandersonjus-svg.github.io/Fortis-Nutri-o"
 
 import segno
 
