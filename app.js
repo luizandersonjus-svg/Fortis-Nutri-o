@@ -3,7 +3,7 @@
 "use strict";
 const D = window.FORTIS;
 const C = window.FORTIS_CORE;
-const VERSION = "1.3";
+const VERSION = "1.3.1";
 const $ = (s, r) => (r||document).querySelector(s);
 const $$ = (s, r) => Array.from((r||document).querySelectorAll(s));
 
@@ -461,7 +461,7 @@ function vOnboarding(){ const s=ui.obStep, ob=ui.ob;
   const head=(t,sub)=>`<div class="obhead"><div class="obstep">Passo ${s} de ${OB_LAST}</div><div class="steps" role="progressbar" aria-label="Passo ${s} de ${OB_LAST}" aria-valuemin="1" aria-valuemax="${OB_LAST}" aria-valuenow="${s}">${[1,2,3,4].map(i=>`<i class="${i<=s?"on":""}"></i>`).join("")}</div><h2>${t}</h2>${sub?`<p class="small muted">${sub}</p>`:""}</div>`;
   const nav=(next)=>`<div class="rowbtns"><button class="btn btn-ghost" onclick="App.obBack()">Voltar</button><button class="btn btn-gold" onclick="App.obNext()">${next||"Continuar"}</button></div>`;
   if(s===0) return `<div class="welcome">
-    <img class="wlogo" src="assets/logo.svg" width="132" height="154" alt="">
+    <img class="wlogo" src="assets/logo.svg" width="140" height="168" alt="">
     <h2 class="wtitle">Ganhe massa magra<span>sem passar fome</span></h2>
     <div class="brushbar"></div>
     <p class="wlead">Em 2 minutos o FORTIS calcula <b>quanto você deve comer por dia</b> e te ajuda a acompanhar sua evolução.</p>

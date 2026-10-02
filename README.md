@@ -16,9 +16,9 @@ Acompanha o ebook + planilha FORTIS. **PWA instalável, 100% offline, dados só 
 - **Suplementação** — 5 referências + toggle de uso + personalizados
 - **Backup** — exportar/importar JSON, exportar CSV, apagar dados
 
-## Identidade visual (v1.1)
-- **Novo logotipo**: escudo dourado com **capacete espartano desenhado em SVG** (`assets/logo.svg`) — cabeçalho do app, página de instalação e ícones PWA.
-- Preto texturizado + dourado metálico, pincelada dourada e os 5 checks da capa (`assets/cover.jpg` na abertura e no Sobre).
+## Identidade visual
+- **Símbolo:** escudo dourado com o **capacete espartano da capa do ebook**, redesenhado em vetor com textura de folha de ouro (`assets/logo.svg`). Usado no cabeçalho, na tela de boas-vindas, na página de instalação e nos ícones PWA.
+- Preto + dourado metálico, pincelada dourada e os 5 checks da capa (`assets/cover.jpg` em *Sobre o método*).
 
 ## Página de instalação + QR code
 - **`instalar.html`** — página autocontida (funciona até em prévia de arquivo) com QR, botão de abrir o app e passo a passo Android/iPhone. Linkada no app em **Mais → Instalar o app**.
@@ -42,7 +42,7 @@ Abra `http://localhost:8080` (app) ou `/instalar.html` (página de instalação)
 - Depois de publicado: Android → Chrome ⋮ → **Instalar app**. iPhone → Safari → Compartilhar → **Adicionar à Tela de Início**.
 
 ## Trocar logo/ícones
-- Substitua `assets/cover.jpg` (capa). Para refazer os ícones a partir de um novo `logo.svg`, renderize com `cairosvg` nos tamanhos 192/512 (+ maskable com margem) — veja o histórico de geração.
+- Substitua `assets/cover.jpg` (capa). Ao mudar `assets/logo.svg`, copie o mesmo SVG para dentro de `instalar.html` (a página é autocontida) e regenere os PNGs de `icons/` (192, 512, maskable 512 com margem de segurança, apple-touch 180, favicon 32) renderizando o SVG num navegador — o `cairosvg` não suporta o filtro de textura.
 
 ## Estrutura do código
 | Arquivo | Papel |
