@@ -1,4 +1,4 @@
-# 🛡️ FORTIS — App PWA (Calorias, Macros e Progresso) — v1.2
+# 🛡️ FORTIS — App PWA (Calorias, Macros e Progresso) — v1.3
 
 Acompanha o ebook + planilha FORTIS. **PWA instalável, 100% offline, dados só no aparelho** (sem conta, sem servidor).
 
@@ -73,6 +73,14 @@ O GitHub Actions (`.github/workflows/ci.yml`) roda os dois a cada push/PR.
 - Semana 1 = data do primeiro registro (equivale ao `$A$2` da planilha). A variação semanal compara com a última semana anterior que tem pesagem (normalizada por semana).
 - Um registro por dia: lançar outro na mesma data pede confirmação e substitui.
 - CSV exportado no padrão do Excel pt-BR (`;` entre colunas, vírgula decimal, UTF-8 com BOM).
+
+## Novidades da v1.3 — mais fácil para iniciantes
+- **Nova tela de boas-vindas** com o logo vetorial e textos de verdade (a capa do ebook continua em *Sobre o método*).
+- **Cadastro guiado em 4 passos** com validação: sobre você → quanto se movimenta → objetivo → resultado explicado.
+- **Linguagem simples:** opções em cartões com explicação (ex.: “Ganhar massa devagar — bom para começar” em vez de “Superávit leve”; “Ativo — treina 3 a 5 vezes por semana” em vez de “Moderadamente ativo”). Os valores salvos não mudaram, então dados antigos continuam válidos. Textos ficam em `FORTIS.ACT_INFO` / `FORTIS.GOAL_INFO` (`foods.js`).
+- **Botões “?”** explicam cada termo (calorias por dia, gasto em repouso, gasto total, superávit, macros, g/kg, cintura, “seguiu o plano?”).
+- **Início com “Seus próximos passos”** (perfil → plano → registrar peso) e a meta de calorias explicada em uma frase.
+- Termos renomeados: “Calorias-alvo” → “Coma por dia”, “Aderência” → “Seguiu o plano?”, “Estruturas” → “Cardápios-modelo”.
 
 ## Novidades da v1.2
 - **Correções:** onboarding em 4 passos voltou a funcionar (antes pulava para o Início no 1º passo e não salvava nada); gráficos com uma única semana não quebram mais (NaN); excluir um suplemento próprio não troca mais as marcações dos outros; perda de peso não é mais lida como “peso estável”; gráfico de pizza com carboidrato negativo; “Apagar tudo” volta ao onboarding; dados após a semana 12 não somem mais.

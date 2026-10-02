@@ -121,3 +121,17 @@ FORTIS.SUPLE = [
  {n:"Vitamina B12",f:"Dietas veganas",d:"Conforme orientação profissional",h:"Conforme orientação",o:"Avaliar com profissional"}
 ];
 FORTIS.BADGES5 = ["Mais massa muscular","Mais energia","Melhor recuperação","Mais disposição","Mais confiança"];
+/* Textos em linguagem simples para as opções (as chaves são os valores salvos — não alterar) */
+FORTIS.ACT_INFO = {
+  "Sedentário":           {label:"Pouco ativo",          desc:"Trabalho sentado e quase nenhum exercício."},
+  "Levemente ativo":      {label:"Levemente ativo",      desc:"Treina 1 a 3 vezes por semana ou anda bastante no dia a dia."},
+  "Moderadamente ativo":  {label:"Ativo",                desc:"Treina 3 a 5 vezes por semana."},
+  "Muito ativo":          {label:"Muito ativo",          desc:"Treina 6 a 7 vezes por semana ou tem trabalho físico."},
+  "Extremamente ativo":   {label:"Atleta / trabalho pesado", desc:"Treina pesado 2 vezes por dia ou faz trabalho braçal intenso."}
+};
+FORTIS.GOAL_INFO = {
+  "Manutenção ou recomposição":     {label:"Manter o peso",          desc:"Come o mesmo que gasta. Para quem quer trocar gordura por músculo sem mudar o peso.", tag:""},
+  "Superávit leve":                 {label:"Ganhar massa devagar",    desc:"Come um pouco a mais (+7,5%). Ganho mais limpo, com pouca gordura.", tag:"Bom para começar"},
+  "Superávit moderado":             {label:"Ganhar massa no ritmo médio", desc:"Come um pouco mais (+12,5%). Para quem é muito magro ou tem dificuldade de engordar.", tag:""},
+  "Superávit elevado (monitorado)": {label:"Ganhar massa rápido",     desc:"Come bem mais (+17,5%). Ganho mais rápido, porém com mais gordura. Ideal com acompanhamento.", tag:""}
+};
