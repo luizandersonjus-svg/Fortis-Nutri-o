@@ -47,28 +47,37 @@ async function step(name, fn) {
 
   await page.goto(base);
 
-  await step("onboarding percorre os 4 passos e salva o perfil", async () => {
-    assert.equal((await page.textContent("#viewtitle")).trim(), "Bem-vindo");
-    await page.fill("#ob_nome", "Ana Souza");
-    await page.selectOption("#ob_sexo", "Feminino");
+  await step("onboarding percorre os passos, valida e salva o perfil", async () => {
+    assert.match(await viewText(), /sem passar fome/i);
+    await page.click("text=Começar");
     await page.click("text=Continuar");
+    assert.match(await page.textContent("#toast"), /Homem ou Mulher/, "exige os dados do passo 1");
+    await page.fill("#ob_nome", "Ana Souza");
+    await page.click(".opt >> text=Mulher");
     await page.fill("#ob_idade", "28");
     await page.fill("#ob_peso", "60");
     await page.fill("#ob_alt", "165");
+    await page.click("text=Continuar");
     await page.click("text=Voltar");
     assert.equal(await page.inputValue("#ob_nome"), "Ana Souza", "voltar mantém o que foi digitado");
+    assert.equal(await page.getAttribute(".opt.on", "aria-checked"), "true");
     await page.click("text=Continuar");
-    assert.equal(await page.inputValue("#ob_peso"), "60");
+    await page.click('.opt .ot >> text="Ativo"');
     await page.click("text=Continuar");
-    await page.selectOption("#ob_ativ", "Moderadamente ativo");
-    await page.selectOption("#ob_obj", "Superávit leve");
-    await page.click("text=Continuar");
-    await page.click("text=Começar!");
+    await page.click("text=Ganhar massa devagar");
+    await page.click("text=Ver meu resultado");
+    assert.match(await viewText(), /Coma por dia/i);
+    await page.click(".kpi.big .help");
+    assert.match(await page.textContent("#sheet"), /Calorias por dia/);
+    await page.click("text=Entendi");
+    await page.click("text=Começar a usar");
     assert.equal((await page.textContent("#viewtitle h1")).trim(), "Início");
     const s = await state();
     assert.equal(s.onboarded, true);
     assert.equal(s.profile.peso, "60");
-    assert.match(await viewText(), /Calorias-alvo/);
+    assert.equal(s.profile.atividade, "Moderadamente ativo");
+    assert.equal(s.profile.objetivo, "Superávit leve");
+    assert.match(await viewText(), /Seus próximos passos/);
     assert.match(await viewText(), /Ana/);
   });
 
@@ -185,7 +194,7 @@ async function step(name, fn) {
     await page.evaluate(() => App.go("backup"));
     await page.click("text=Apagar todos os dados");
     await page.click("#sheet .btn-gold");
-    assert.equal((await page.textContent("#viewtitle")).trim(), "Bem-vindo");
+    assert.match(await viewText(), /sem passar fome/i);
   });
 
   await step("funciona offline depois da primeira visita (service worker)", async () => {
@@ -194,7 +203,7 @@ async function step(name, fn) {
     await page.reload();                         // agora controlado pelo SW
     await context.setOffline(true);
     await page.reload();
-    assert.equal((await page.textContent("#viewtitle")).trim(), "Bem-vindo");
+    assert.match(await viewText(), /sem passar fome/i);
     const font = await page.evaluate(() => document.fonts.check("700 16px Oswald"));
     assert.ok(font, "fonte Oswald carregada do cache");
     await context.setOffline(false);

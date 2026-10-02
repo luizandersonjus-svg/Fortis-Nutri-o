@@ -3,7 +3,7 @@
 "use strict";
 const D = window.FORTIS;
 const C = window.FORTIS_CORE;
-const VERSION = "1.2";
+const VERSION = "1.3";
 const $ = (s, r) => (r||document).querySelector(s);
 const $$ = (s, r) => Array.from((r||document).querySelectorAll(s));
 
@@ -91,7 +91,7 @@ const BRAND=`<b>FORTIS</b><span>Nutrição • Saúde • Suplementação</span>
 
 /* ---------- acessibilidade: associa cada <label class="f"> ao campo seguinte ---------- */
 function linkLabels(root){ $$("label.f",root).forEach(l=>{ if(l.htmlFor) return;
-  let el=l.nextElementSibling; if(el&&!/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) el=null;
+  let el=l.parentElement.classList.contains("lblrow")?l.parentElement.nextElementSibling:l.nextElementSibling; if(el&&!/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) el=null;
   if(el){ if(!el.id) el.id="fld_"+uid(); l.htmlFor=el.id; } }); }
 
 /* ---------- toast (substitui alert) ---------- */
@@ -110,29 +110,70 @@ let _confirmCb=null;
 function mConfirm(msg,cb,okLabel){ _confirmCb=cb; openSheet(`<h2 id="sheetTitle">Confirmar</h2><p>${msg}</p><div class="rowbtns"><button class="btn btn-ghost" onclick="App.close()">Cancelar</button><button class="btn btn-gold" onclick="App.confirmYes()">${esc(okLabel||"Confirmar")}</button></div>`); }
 const menuRow=(v,label,sub,ic)=>`<button class="menurow" onclick="App.go('${v}')"><span class="ic" aria-hidden="true">${ic}</span><span style="flex:1">${label}<small>${sub}</small></span><span class="chev" aria-hidden="true">›</span></button>`;
 
+/* ---------- linguagem simples: glossário e opções explicadas ---------- */
+const GLOSS={
+ kcal:["Calorias por dia","É quanto você deve comer por dia, somando todas as refeições, para chegar ao seu objetivo. É uma estimativa inicial: acompanhe seu peso por 2 a 3 semanas e ajuste se precisar."],
+ tmb:["Gasto em repouso (TMB)","Energia que seu corpo gasta só para funcionar — respirar, bater o coração, manter a temperatura — mesmo se ficasse deitado o dia todo. Calculado com seu sexo, idade, peso e altura (fórmula de Mifflin-St Jeor)."],
+ get:["Gasto total do dia (GET)","É o gasto em repouso somado a tudo o que você gasta se movimentando e treinando. Se comer exatamente isso, seu peso tende a ficar igual."],
+ superavit:["Por que comer a mais?","Para construir músculo, o corpo precisa de energia extra: comer um pouco mais do que gasta. Essa “sobra” se chama superávit calórico. Sobra pequena = ganho mais lento e com menos gordura. Sobra grande = ganho mais rápido, mas com mais gordura."],
+ macros:["Proteína, carboidrato e gordura","São os três grupos de nutrientes que têm calorias.<br><br><b>Proteína</b> (carnes, ovos, leite, feijão): constrói e recupera o músculo.<br><b>Carboidrato</b> (arroz, pão, batata, frutas): dá energia para treinar.<br><b>Gordura</b> (azeite, castanhas, ovos): essencial para os hormônios.<br><br>O app calcula quantos gramas de cada um você deve comer por dia."],
+ gkg:["g/kg (gramas por quilo)","Quantidade por quilo do seu peso. Exemplo: 2 g/kg de proteína para quem pesa 70 kg = 140 g de proteína por dia.<br><br>Se não tiver certeza, deixe os valores sugeridos (proteína 2,0 e gordura 1,0)."],
+ aderencia:["Seguiu o plano?","De 0 a 100%, o quanto você seguiu o plano no dia. Seguiu quase tudo = 90%. Fez metade das refeições = 50%.<br><br>Serve para saber se o resultado (ou a falta dele) vem do plano ou do dia a dia."],
+ cintura:["Por que medir a cintura?","O peso sozinho não mostra se você ganhou músculo ou gordura. Se o peso sobe e a cintura quase não muda, é ótimo sinal.<br><br>Meça sempre no mesmo lugar (na altura do umbigo), de manhã, antes de comer."],
+ ritmo:["Ganho esperado por semana","Para iniciantes, ganhar de 0,25% a 0,5% do peso por semana costuma significar mais músculo e pouca gordura. Ganhou mais rápido que isso? Observe a cintura. Não ganhou nada em 2 a 3 semanas? Aumente 100 a 150 kcal por dia."]
+};
+const helpBtn=(k)=>`<button type="button" class="help" onclick="App.help('${k}')" aria-label="Saiba mais: ${esc(GLOSS[k][0])}">?</button>`;
+const SEXOS=[["Masculino","Homem"],["Feminino","Mulher"]];
+const actInfo=(k)=>(D.ACT_INFO&&D.ACT_INFO[k])||{label:k,desc:""};
+const goalInfo=(k)=>(D.GOAL_INFO&&D.GOAL_INFO[k])||{label:k,desc:""};
+/* lista de opções em cartões (radio) com título e explicação */
+function optCards(group,items,val,action){
+  return `<div class="opts" role="radiogroup" aria-label="${esc(group)}">${items.map((it,i)=>{ const on=it.v===val;
+    return `<button type="button" role="radio" aria-checked="${on}" class="opt${on?" on":""}" onclick="${action}(${i})"><span class="ot">${esc(it.label)}${it.tag?` <span class="pill p-ok">${esc(it.tag)}</span>`:""}</span>${it.desc?`<span class="od">${esc(it.desc)}</span>`:""}</button>`; }).join("")}</div>`; }
+const actItems=()=>D.ACTS.map(a=>({v:a[0],...actInfo(a[0])}));
+const goalItems=()=>D.GOALS.map(g=>({v:g[0],...goalInfo(g[0])}));
+const sexItems=()=>SEXOS.map(s=>({v:s[0],label:s[1]}));
+const labelHelp=(text,k)=>`<div class="lblrow"><label class="f">${text}</label>${helpBtn(k)}</div>`;
+/* frase explicando a meta de calorias */
+function kcalExplica(pf){ if(!pf) return "";
+  const extra=pf.alvo-pf.get;
+  return extra>1?`Seu corpo gasta cerca de <b>${fi(pf.get)} kcal</b> por dia. Comendo <b>${fi(extra)} kcal a mais</b>, ele tem energia extra para construir músculo.`
+    :`Seu corpo gasta cerca de <b>${fi(pf.get)} kcal</b> por dia. Comendo isso, seu peso tende a se manter.`; }
+
 /* ================= VIEWS ================= */
+function proximosPassos(){ const hoje=todayISO();
+  const passos=[
+    [!!calcPerfil(),"Complete seu perfil","Para calcular quanto você deve comer","App.go('perfil')"],
+    [S.plan.length>0,"Monte seu plano alimentar","Escolha o que comer em cada refeição","App.goSeg('plano','plano')"],
+    [S.diary.some(r=>r.data===hoje),"Registre seu peso de hoje","Pese-se de manhã, antes de comer","App.mDiary()"]
+  ];
+  if(passos.every(p=>p[0])) return "";
+  return `<div class="card"><h2>Seus próximos passos</h2>${passos.map((p,i)=>`<button class="menurow step${p[0]?" done":""}" onclick="${p[3]}"><span class="ic stepn" aria-hidden="true">${p[0]?"✓":i+1}</span><span style="flex:1">${p[1]}${p[0]?' <span class="sr">(feito)</span>':""}<small>${p[2]}</small></span><span class="chev" aria-hidden="true">›</span></button>`).join("")}</div>`;
+}
 function vInicio(){ const pf=calcPerfil(),mc=calcMacros();
   const first=S.profile.nome?esc(S.profile.nome.split(" ")[0]):"Guerreiro";
   let h=`<div class="card gold"><div class="muted">${saudacao()},</div><h2 style="font-size:20px;margin:2px 0 6px">${first} 🛡️</h2><div class="brushbar"></div>`;
-  if(!pf){ h+=`<p class="small">Complete seu perfil para calcular <b>TMB, GET, calorias-alvo e macros</b>.</p><button class="btn btn-gold" onclick="App.go('perfil')">Montar meu perfil</button>`; }
+  if(!pf){ h+=`<p class="small">Complete seu perfil e o app calcula <b>quanto você deve comer por dia</b> para ganhar massa.</p><button class="btn btn-gold" onclick="App.go('perfil')">Montar meu perfil</button>`; }
   else{ const pa=pesoAtual();
-    h+=`<div class="kpis"><div class="kpi big"><div class="l">Calorias-alvo</div><div class="v">${fi(mc?mc.alvo:pf.alvo)} <em>kcal/dia</em></div></div>
-    <div class="kpi"><div class="l">Proteína</div><div class="v">${mc?fi(mc.protG):"—"} <em>g</em></div></div>
-    <div class="kpi"><div class="l">Carboidratos</div><div class="v">${mc?fi(mc.carbsG):"—"} <em>g</em></div></div>
-    <div class="kpi"><div class="l">Gorduras</div><div class="v">${mc?fi(mc.gordG):"—"} <em>g</em></div></div>
-    <div class="kpi"><div class="l">Peso atual</div><div class="v">${pa!=null?f1(pa)+" <em>kg</em>":"—"}</div></div></div>`;
+    h+=`<div class="kpis"><div class="kpi big"><div class="l">Coma por dia ${helpBtn("kcal")}</div><div class="v">${fi(mc?mc.alvo:pf.alvo)} <em>kcal</em></div><div class="sub">${kcalExplica(pf)}</div></div>
+    <div class="kpi"><div class="l">Proteína</div><div class="v">${mc?fi(mc.protG):"—"} <em>g/dia</em></div></div>
+    <div class="kpi"><div class="l">Carboidratos</div><div class="v">${mc?fi(mc.carbsG):"—"} <em>g/dia</em></div></div>
+    <div class="kpi"><div class="l">Gorduras</div><div class="v">${mc?fi(mc.gordG):"—"} <em>g/dia</em></div></div>
+    <div class="kpi"><div class="l">Peso atual</div><div class="v">${pa!=null?f1(pa)+" <em>kg</em>":"—"}</div></div></div>
+    <p class="small muted" style="margin:8px 0 0">O que é proteína, carboidrato e gordura? ${helpBtn("macros")}</p>`;
     let cw=null; S.diary.forEach(r=>{ const w=weekOf(r.data); if(w!=null&&(cw==null||w>cw)) cw=w; });
     if(cw){ const rows=S.diary.filter(r=>weekOf(r.data)===cw);
       const ad=rows.map(r=>num(r.aderencia)).filter(x=>x!=null);
       const tr=rows.filter(r=>r.treinou==="Sim").length;
-      h+=`<div class="hr"></div><div class="grid2"><div class="kpi"><div class="l">Treinos sem ${cw}</div><div class="v">${tr}</div></div><div class="kpi"><div class="l">Aderência sem ${cw}</div><div class="v">${ad.length?fi(ad.reduce((a,b)=>a+b,0)/ad.length)+" <em>%</em>":"—"}</div></div></div>`;
+      h+=`<div class="hr"></div><div class="grid2"><div class="kpi"><div class="l">Treinos na semana ${cw}</div><div class="v">${tr}</div></div><div class="kpi"><div class="l">Seguiu o plano</div><div class="v">${ad.length?fi(ad.reduce((a,b)=>a+b,0)/ad.length)+" <em>%</em>":"—"}</div></div></div>`;
     }
     h+=`<div class="rowbtns" style="margin-top:12px"><button class="btn btn-gold" onclick="App.mDiary()">Registrar hoje</button></div>`;
   }
   h+=`</div>`;
-  h+=`<div class="card"><h2>Atalhos</h2>${menuRow("perfil","Perfil e metas","TMB, GET e calorias-alvo","👤")}${menuRow("macros","Macronutrientes","Proteína, gordura, carbos e fibras","🥩")}</div>`;
+  h+=proximosPassos();
+  h+=`<div class="card"><h2>Atalhos</h2>${menuRow("perfil","Perfil e metas","Seus dados e quanto comer por dia","👤")}${menuRow("macros","Proteína, carbo e gordura","Quantos gramas de cada por dia","🥩")}</div>`;
   const segRow=(seg,label,sub,ic)=>`<button class="menurow" onclick="App.goSeg('plano','${seg}')"><span class="ic" aria-hidden="true">${ic}</span><span style="flex:1">${label}<small>${sub}</small></span><span class="chev" aria-hidden="true">›</span></button>`;
-  h+=`<div class="card"><h2>Alimentação</h2>${segRow("plano","Meu plano","Monte as refeições do dia","🍽️")}${segRow("estruturas","Estruturas de referência","2.200 • 2.800 • 3.400 kcal","🏛️")}${segRow("alimentos","Banco de alimentos",`${D.FOODS.length} alimentos + seus itens`,"🔍")}</div>`;
+  h+=`<div class="card"><h2>Alimentação</h2>${segRow("plano","Meu plano","Monte as refeições do dia","🍽️")}${segRow("estruturas","Cardápios-modelo","Exemplos de 2.200 • 2.800 • 3.400 kcal","🏛️")}${segRow("alimentos","Banco de alimentos",`${D.FOODS.length} alimentos + seus itens`,"🔍")}</div>`;
   h+=`<div class="card"><h2>Rotina</h2>${menuRow("compras","Lista de compras","Mercado e organização","🛒")}${menuRow("suple","Suplementação","Referências educacionais","💊")}</div>`;
   h+=`<footer class="appfoot"><b>FORTIS</b> • Disciplina, constância e fortaleza</footer>`;
   return h;
@@ -142,56 +183,55 @@ function selOpts(list,val){ return `<option value="">— Selecionar —</option>
 function vPerfil(){ const p=S.profile;
   return `<div class="card"><h2>Seus dados</h2>
    <label class="f">Nome</label><input id="pf_nome" value="${esc(p.nome)}" placeholder="Seu nome" autocomplete="given-name" maxlength="80" onchange="App.pfSave()">
-   <div class="grid2"><div><label class="f">Sexo</label><select id="pf_sexo" onchange="App.pfSave()">${selOpts(["Masculino","Feminino"],p.sexo)}</select></div>
-   <div><label class="f">Idade (anos)</label><input id="pf_idade" type="number" inputmode="numeric" min="10" max="100" value="${esc(p.idade)}" onchange="App.pfSave()"></div></div>
-   <div class="grid2"><div><label class="f">Peso (kg)</label><input id="pf_peso" type="number" inputmode="decimal" step="0.1" min="30" max="300" value="${esc(p.peso)}" onchange="App.pfSave()"></div>
-   <div><label class="f">Altura (cm)</label><input id="pf_altura" type="number" inputmode="numeric" min="100" max="250" value="${esc(p.altura)}" onchange="App.pfSave()"></div></div>
-   <label class="f">Nível de atividade</label><select id="pf_ativ" onchange="App.pfSave()">${selOpts(D.ACTS,p.atividade)}</select>
-   <label class="f">Objetivo</label><select id="pf_obj" onchange="App.pfSave()">${selOpts(D.GOALS,p.objetivo)}</select>
-   <p class="muted small">Fatores: Sedentário 1,20 • Levemente 1,35 • Moderado 1,55 • Muito 1,725 • Extremo 1,90. Ajustes: 0% • 7,5% • 12,5% • 17,5%.</p></div>
+   <div class="f">Sexo</div>${optCards("Sexo",sexItems(),p.sexo,"App.pfPick_sexo").replace('class="opts"','class="opts two"')}
+   <div class="grid3"><div><label class="f">Idade</label><input id="pf_idade" type="number" inputmode="numeric" min="10" max="100" value="${esc(p.idade)}" placeholder="anos" onchange="App.pfSave()"></div>
+   <div><label class="f">Peso (kg)</label><input id="pf_peso" type="number" inputmode="decimal" step="0.1" min="30" max="300" value="${esc(p.peso)}" placeholder="kg" onchange="App.pfSave()"></div>
+   <div><label class="f">Altura (cm)</label><input id="pf_altura" type="number" inputmode="numeric" min="100" max="250" value="${esc(p.altura)}" placeholder="cm" onchange="App.pfSave()"></div></div></div>
+   <div class="card"><h2>Quanto você se movimenta?</h2>${optCards("Nível de atividade",actItems(),p.atividade,"App.pfPick_atividade")}</div>
+   <div class="card"><h2>Qual é o seu objetivo? ${helpBtn("superavit")}</h2>${optCards("Objetivo",goalItems(),p.objetivo,"App.pfPick_objetivo")}</div>
    <div id="pfResult" aria-live="polite">${vPerfilResult()}</div>`;
 }
+function resultKpis(pf){ return `<div class="kpis">
+    <div class="kpi big"><div class="l">Coma por dia ${helpBtn("kcal")}</div><div class="v">${fi(pf.alvo)} <em>kcal</em></div><div class="sub">${kcalExplica(pf)}</div></div>
+    <div class="kpi"><div class="l">Gasto em repouso ${helpBtn("tmb")}</div><div class="v">${fi(pf.tmb)} <em>kcal</em></div></div>
+    <div class="kpi"><div class="l">Gasto total do dia ${helpBtn("get")}</div><div class="v">${fi(pf.get)} <em>kcal</em></div></div></div>
+    ${pf.ajuste>0?`<p class="small" style="margin:10px 0 0">📈 Ganho esperado: <b>${fi(pf.ritmoMin)} a ${fi(pf.ritmoMax)} g por semana</b> ${helpBtn("ritmo")}</p>`:""}`; }
 function vPerfilResult(){ const pf=calcPerfil();
-  if(!pf) return `<div class="card"><span class="pill p-warn">⚠ Preencha todos os campos para calcular suas metas</span></div>`;
-  return `<div class="card gold"><h2>Suas metas calculadas</h2><div class="kpis">
-    <div class="kpi"><div class="l">TMB (Mifflin-St Jeor)</div><div class="v">${f2(pf.tmb)}</div></div>
-    <div class="kpi"><div class="l">GET (gasto total)</div><div class="v">${f2(pf.get)}</div></div>
-    <div class="kpi big"><div class="l">Calorias-alvo</div><div class="v">${f2(pf.alvo)} <em>kcal/dia</em></div></div></div>
-    <p class="small" style="margin:10px 0 0">📈 Ritmo semanal de referência: <b>${fi(pf.ritmoMin)} a ${fi(pf.ritmoMax)} g/semana</b> <span class="muted">— referência inicial para iniciantes com baixo peso.</span></p>
-    <p class="small" style="margin:6px 0 0"><span class="pill p-ok">✓ Perfil completo! Veja a aba Macronutrientes</span></p></div>`;
+  if(!pf){ const p=S.profile, falta=[!p.sexo&&"sexo",!num(p.idade)&&"idade",!num(p.peso)&&"peso",!num(p.altura)&&"altura",!p.atividade&&"quanto se movimenta",!p.objetivo&&"objetivo"].filter(Boolean);
+    return `<div class="card"><span class="pill p-warn">⚠ Falta preencher: ${esc(falta.join(", "))}</span></div>`; }
+  return `<div class="card gold"><h2>Seu resultado</h2>${resultKpis(pf)}
+    <p class="small" style="margin:10px 0 0"><span class="pill p-ok">✓ Perfil completo!</span> <a href="#" onclick="App.go('macros');return false" class="lnk">Ver proteína, carbo e gordura ›</a></p></div>`;
 }
 
 function vMacros(){ const pf=calcPerfil();
   if(!pf) return `<div class="card"><span class="pill p-warn">⚠ Preencha o Perfil primeiro</span><div class="rowbtns"><button class="btn btn-gold" onclick="App.go('perfil')">Ir para o perfil</button></div></div>`;
-  return `<div class="card"><h2>Ajuste (g/kg)</h2><div class="grid2">
-   <div><label class="f">Proteína (ref. 1,6–2,2)</label><input id="mc_p" type="number" inputmode="decimal" step="0.1" min="0" max="5" value="${esc(S.macros.protKg)}" onchange="App.mcSave()"></div>
-   <div><label class="f">Gordura (≈1,0)</label><input id="mc_g" type="number" inputmode="decimal" step="0.1" min="0" max="5" value="${esc(S.macros.gordKg)}" onchange="App.mcSave()"></div></div></div>
-   <div id="mcResult" aria-live="polite">${vMacrosResult()}</div>`;
+  return `<div id="mcResult" aria-live="polite">${vMacrosResult()}</div>
+   <div class="card"><h2>Ajuste fino (opcional) ${helpBtn("gkg")}</h2><p class="small muted">Gramas por quilo do seu peso. Se não tiver certeza, deixe proteína <b>2,0</b> e gordura <b>1,0</b>. O carboidrato é calculado com as calorias que sobram.</p><div class="grid2">
+   <div><label class="f">Proteína (1,6 a 2,2)</label><input id="mc_p" type="number" inputmode="decimal" step="0.1" min="0" max="5" value="${esc(S.macros.protKg)}" onchange="App.mcSave()"></div>
+   <div><label class="f">Gordura (≈1,0)</label><input id="mc_g" type="number" inputmode="decimal" step="0.1" min="0" max="5" value="${esc(S.macros.gordKg)}" onchange="App.mcSave()"></div></div></div>`;
 }
 function vMacrosResult(){ const mc=calcMacros(); if(!mc) return "";
   const row=(l,v,u)=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}${u?` <em>${u}</em>`:""}</div></div>`;
-  let h=`<div class="card gold"><h2>Metas diárias</h2><div class="kpis">
-   ${row("Proteína",fi(mc.protG),"g")}${row("Gordura",fi(mc.gordG),"g")}${row("Carboidratos",fi(mc.carbsG),"g")}
-   ${row("Carbos",f1(mc.carbsKg),"g/kg")}${row("Proteína",pct(mc.pctP),"")}${row("Gordura",pct(mc.pctG),"")}${row("Carbos",pct(mc.pctC),"")}
-   ${row("Fibras (ref.)",mc.fibra==null?"—":mc.fibra,"g/dia")}</div>
-   <p class="small">🍽️ Proteína por refeição (ref.): <b>${fi(mc.protMin)} a ${fi(mc.protMax)} g</b> (0,3–0,4 g/kg).</p>
-   <p class="small">Proteína: ${mc.alertaP==="ok"?'<span class="pill p-ok">Dentro da faixa de referência</span>':mc.alertaP==="low"?'<span class="pill p-warn">Abaixo da faixa de referência</span>':'<span class="pill p-bad">Acima da faixa de referência</span>'}</p>
-   <p class="small">Gordura: ${mc.alertaG==="ok"?'<span class="pill p-ok">Adequado como referência inicial</span>':'<span class="pill p-bad">Abaixo de 20% das calorias: avalie com um profissional</span>'}</p>
-   ${mc.kR<0?'<div class="warnbox">⚠ Calorias insuficientes para essa combinação de proteína e gordura. Reduza as metas de g/kg.</div>':""}</div>`;
-  h+=`<div class="card"><h2>Distribuição de calorias</h2>${pieSVG([{label:"Proteína",v:mc.kP,color:"#C99A2E"},{label:"Gordura",v:mc.kG,color:"#4CAF50"},{label:"Carboidratos",v:mc.carbsG*4,color:"#5C6BC0"}])}
+  let h=`<div class="card gold"><h2>Quanto comer por dia ${helpBtn("macros")}</h2><div class="kpis">
+   ${row("🥩 Proteína",fi(mc.protG),"g")}${row("🍚 Carboidratos",fi(Math.max(0,mc.carbsG)),"g")}${row("🥑 Gordura",fi(mc.gordG),"g")}${row("🥦 Fibras",mc.fibra==null?"—":mc.fibra,"g")}</div>
+   <p class="small">🍽️ Em cada refeição, procure comer <b>${fi(mc.protMin)} a ${fi(mc.protMax)} g de proteína</b>.</p>
+   <p class="small">Proteína: ${mc.alertaP==="ok"?'<span class="pill p-ok">Na faixa recomendada</span>':mc.alertaP==="low"?'<span class="pill p-warn">Abaixo do recomendado</span>':'<span class="pill p-bad">Acima do recomendado</span>'}
+   • Gordura: ${mc.alertaG==="ok"?'<span class="pill p-ok">Adequada</span>':'<span class="pill p-bad">Baixa: avalie com um profissional</span>'}</p>
+   ${mc.kR<0?'<div class="warnbox">⚠ As calorias não são suficientes para essa quantidade de proteína e gordura. Diminua os valores do ajuste fino.</div>':""}</div>`;
+  h+=`<div class="card"><h2>De onde vêm suas calorias</h2>${pieSVG([{label:"Proteína",v:mc.kP,color:"#C99A2E"},{label:"Gordura",v:mc.kG,color:"#4CAF50"},{label:"Carboidratos",v:mc.carbsG*4,color:"#5C6BC0"}])}
    <div class="legend"><span><i style="background:#C99A2E"></i>Proteína ${pct(mc.pctP)}</span><span><i style="background:#4CAF50"></i>Gordura ${pct(mc.pctG)}</span><span><i style="background:#5C6BC0"></i>Carbos ${mc.kR<0?"0%":pct(mc.pctC)}</span></div></div>`;
   return h;
 }
 
 /* ----- plano ----- */
 function segBar(label,segs,cur,fn){ return `<div class="seg" role="group" aria-label="${esc(label)}">${segs.map(s=>`<button class="${s[0]===cur?"on":""}" aria-pressed="${s[0]===cur}" onclick="${fn}('${s[0]}')">${s[1]}</button>`).join("")}</div>`; }
-function vPlano(){ return segBar("Seções do plano",[["plano","Meu plano"],["estruturas","Estruturas"],["alimentos","Alimentos"]],ui.segPlano,"App.segPlano")
+function vPlano(){ return segBar("Seções do plano",[["plano","Meu plano"],["estruturas","Modelos"],["alimentos","Alimentos"]],ui.segPlano,"App.segPlano")
   + (ui.segPlano==="plano"?vPlanoDia():ui.segPlano==="estruturas"?vEstruturas():vAlimentos()); }
 function vPlanoDia(){ const t=planTotals(),pf=calcPerfil(),mc=calcMacros();
   const metas=[["Kcal",t.k,pf?pf.alvo:null],["Proteína (g)",t.p,mc?mc.protG:null],["Carboidratos (g)",t.c,mc?mc.carbsG:null],["Gorduras (g)",t.g,mc?mc.gordG:null],["Fibras (g)",t.f,mc?mc.fibra:null]];
   let h=`<div class="card gold"><h2>Resumo do dia</h2><div class="tblwrap"><table><tr><th scope="col"><span class="sr">Item</span></th><th scope="col">Real</th><th scope="col">Meta</th><th scope="col">Status</th></tr>`;
   metas.forEach(m=>{ const st=C.statusOf(m[1],m[2]); h+=`<tr><td class="l">${m[0]}</td><td>${fi(m[1])}</td><td>${m[2]==null?"—":fi(m[2])}</td><td>${st[0]?`<span class="pill ${st[1]}">${st[0]}</span>`:"—"}</td></tr>`; });
-  h+=`</table></div><p class="muted small">Pese os alimentos e indique se estão crus ou cozidos. Considere azeite, molhos e pastas.</p></div>`;
+  h+=`</table></div><p class="muted small">“Dentro de ±5%” = você está perto da meta. Pese os alimentos e não esqueça azeite, molhos e pastas.</p></div>`;
   h+=`<button class="btn btn-gold" onclick="App.mPlanItem()">＋ Adicionar alimento</button><div style="height:10px"></div>`;
   const m=foodMap();
   const meals=[...D.MEALS8,...new Set(S.plan.map(it=>it.m).filter(x=>!D.MEALS8.includes(x)))];
@@ -208,7 +248,7 @@ function vPlanoDia(){ const t=planTotals(),pf=calcPerfil(),mc=calcMacros();
   return h;
 }
 function vEstruturas(){ const i=ui.segEstr, st=D.STRUCTS[i], m=foodMap(), sels=S.estr[i]||[];
-  let h=`<div class="goldbox" style="margin-bottom:10px"><b>🏛️ Estruturas alimentares de referência</b> — NÃO são cardápios prontos calculados. Escolha o alimento e a quantidade.</div>`;
+  let h=`<div class="goldbox" style="margin-bottom:10px"><b>🏛️ Cardápios-modelo</b> — mostram como dividir as refeições em cada faixa de calorias. Escolha o alimento e a quantidade de cada item para ver o total.</div>`;
   h+=segBar("Estrutura",[["0","≈2.200"],["1","≈2.800"],["2","≈3.400"]],String(i),"App.segEstr");
   let lastMeal="";
   st.rows.forEach((r,j)=>{ const sel=sels[j]||{f:"",q:""}; const unknown=sel.f&&!m[sel.f];
@@ -216,7 +256,7 @@ function vEstruturas(){ const i=ui.segEstr, st=D.STRUCTS[i], m=foodMap(), sels=S
     h+=`<div class="item"><div class="grow"><div class="s">${esc(r[1])}${unknown?' <span class="pill p-warn">não encontrado</span>':""}</div><input id="ef${j}" list="dlFoods" value="${esc(sel.f)}" placeholder="Escolher alimento…" aria-label="Alimento para ${esc(r[0]+" — "+r[1])}" onchange="App.estrFood(${i},${j},this.value)" style="margin-top:4px"></div><input id="eq${j}" type="number" inputmode="numeric" min="0" step="1" value="${esc(sel.q)}" aria-label="Gramas" onchange="App.estrQty(${i},${j},this.value)"><span class="muted small" aria-hidden="true">g</span></div>`;
   });
   const t=C.sumItems(sels.slice(0,st.rows.length),m), diff=t.k-st.kcal;
-  h+=`<div class="card gold" id="estrTotal"><h2>Total da estrutura</h2><div class="kpis"><div class="kpi big"><div class="l">Total</div><div class="v">${fi(t.k)} <em>kcal</em></div></div>
+  h+=`<div class="card gold" id="estrTotal"><h2>Total do cardápio</h2><div class="kpis"><div class="kpi big"><div class="l">Total</div><div class="v">${fi(t.k)} <em>kcal</em></div></div>
    <div class="kpi"><div class="l">Proteína</div><div class="v">${fi(t.p)} <em>g</em></div></div><div class="kpi"><div class="l">Carbos</div><div class="v">${fi(t.c)} <em>g</em></div></div></div>
    <p class="small">Diferença vs alvo: <b>${diff>=0?"+":""}${fi(diff)} kcal</b> (alvo aprox. ${st.kcal.toLocaleString("pt-BR")} kcal)</p>
    <p class="muted small">Os valores finais dependem das quantidades, marcas e preparo. Não constitui prescrição individual.</p></div>`;
@@ -252,7 +292,7 @@ function vRegistro(){ const rows=diarySorted().reverse();
     h+=`<div class="card" style="padding:12px"><div style="display:flex;justify-content:space-between;align-items:center"><b>${dataBR(r.data)}</b><span class="pill p-info">Semana ${w==null?"—":w}</span></div>
     <div class="grid3" style="margin-top:8px">${kv("Peso",fmt(r.peso,f1,"kg"))}${kv("Cintura",fmt(r.cintura,f1,"cm"))}${kv("Sono",fmt(r.sono,f1,"h"))}</div>
     <div class="grid3" style="margin-top:8px">${kv("Kcal",fmt(r.kcal,fi))}${kv("Proteína",fmt(r.prot,fi,"g"))}${kv("Treino",r.treinou==="Sim"?'<span aria-label="Sim">✅</span>':r.treinou==="Não"?'<span aria-label="Não">⬜</span>':"—")}</div>
-    ${ad!=null?`<div class="small" style="margin-top:8px">Aderência ${fi(ad)}%</div><div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(ad)}"><i style="width:${Math.min(100,Math.max(0,ad))}%"></i></div>`:""}
+    ${ad!=null?`<div class="small" style="margin-top:8px">Seguiu o plano: ${fi(ad)}%</div><div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(ad)}"><i style="width:${Math.min(100,Math.max(0,ad))}%"></i></div>`:""}
     <div class="rowbtns"><button class="btn btn-ghost btn-sm" onclick="App.mDiary('${r.id}')">Editar</button><button class="btn btn-danger btn-sm" onclick="App.diaryDel('${r.id}')">Excluir</button></div></div>`;
   });
   return h;
@@ -274,13 +314,13 @@ function vTreino(){ let h=`<div class="card"><h2>Séries por grupo (soma)</h2><d
 function vProgresso(){ const pd=C.progressData(S.diary); const withN=pd.filter(w=>w.n>0);
   let h=`<div class="goldbox"><b>📊 Médias semanais</b> calculadas do seu Registro. Analise tendências de 2–3 semanas — oscilações diárias não representam necessariamente ganho ou perda de tecido.</div><div style="height:10px"></div>`;
   if(!withN.length) return h+`<div class="card"><p class="muted">Registre dias na aba Diário para ver seu progresso aqui.</p></div>`;
-  h+=`<div class="card"><h2>Tabela semanal</h2><div class="tblwrap"><table><tr><th scope="col">Sem</th><th scope="col">Peso</th><th scope="col">Cint</th><th scope="col">Kcal</th><th scope="col">Prot</th><th scope="col">Sono</th><th scope="col">Tr</th><th scope="col">Ader</th><th scope="col">Var</th></tr>`;
+  h+=`<div class="card"><h2>Tabela semanal</h2><div class="tblwrap"><table><tr><th scope="col">Sem</th><th scope="col">Peso</th><th scope="col">Cint</th><th scope="col">Kcal</th><th scope="col">Prot</th><th scope="col">Sono</th><th scope="col">Tr</th><th scope="col">Plano</th><th scope="col">Var</th></tr>`;
   withN.forEach(w=>{ h+=`<tr><td><b>${w.w}</b></td><td>${w.peso==null?"—":f1(w.peso)}</td><td>${w.cint==null?"—":f1(w.cint)}</td><td>${w.kcal==null?"—":fi(w.kcal)}</td><td>${w.prot==null?"—":fi(w.prot)}</td><td>${w.sono==null?"—":f1(w.sono)}</td><td>${w.treinos}</td><td>${w.ader==null?"—":fi(w.ader)+"%"}</td><td>${w.var==null?"—":pct(w.var,1)}</td></tr>`; });
   h+=`</table></div><p class="muted small">Var = variação média semanal do peso em relação à semana anterior com pesagem.</p></div>`;
   const lb=withN.map(w=>"S"+w.w);
   h+=`<div class="card"><h2>Peso médio (kg)</h2>${lineSVG("Peso médio (kg)",lb,withN.map(w=>w.peso),"#C99A2E",1)}</div>`;
   h+=`<div class="card"><h2>Cintura média (cm)</h2>${lineSVG("Cintura média (cm)",lb,withN.map(w=>w.cint),"#4CAF50",1)}</div>`;
-  h+=`<div class="card"><h2>Aderência média (%)</h2>${lineSVG("Aderência média (%)",lb,withN.map(w=>w.ader),"#5C6BC0",0)}</div>`;
+  h+=`<div class="card"><h2>Seguiu o plano — média (%)</h2>${lineSVG("Seguiu o plano — média (%)",lb,withN.map(w=>w.ader),"#5C6BC0",0)}</div>`;
   h+=`<div class="card"><h2>Sono médio (h)</h2>${lineSVG("Sono médio (h)",lb,withN.map(w=>w.sono),"#E8BE4E",1)}</div>`;
   const leituras=withN.filter(w=>w.leitura);
   h+=`<div class="card"><h2>Leituras</h2>`;
@@ -362,7 +402,7 @@ function render(){
 function renderKeepFocus(){ setTimeout(()=>{ const a=document.activeElement, id=a&&a.id, y=window.scrollY;
   render(); window.scrollTo(0,y); if(id){ const el=document.getElementById(id); if(el&&el!==document.activeElement) el.focus(); } },0); }
 function renderOnboarding(){ document.title="FORTIS — Bem-vindo";
-  $("#brandTitle").innerHTML=BRAND; $("#viewtitle").innerHTML=`<h1>Bem-vindo</h1>`;
+  $("#brandTitle").innerHTML=BRAND; $("#viewtitle").innerHTML=ui.obStep?`<h1>Primeiros passos</h1>`:"";
   const view=$("#view"); view.innerHTML=vOnboarding(); linkLabels(view); $("#tabbar").innerHTML=""; refreshFoodList(); }
 
 /* ================= modais de edição ================= */
@@ -378,11 +418,11 @@ function mDiary(id){ const r=id?S.diary.find(x=>x.id===id):null;
   <div class="grid2"><div><label class="f">Data</label><input id="d_data" type="date" value="${r?esc(r.data):todayISO()}" max="${todayISO()}" required></div>
   <div><label class="f">Treinou?</label><select id="d_treino"><option value="">—</option><option${r&&r.treinou==="Sim"?" selected":""}>Sim</option><option${r&&r.treinou==="Não"?" selected":""}>Não</option></select></div></div>
   <div class="grid2"><div><label class="f">Peso (kg)</label><input id="d_peso" type="number" inputmode="decimal" step="0.1" min="30" max="300" value="${v("peso")}"></div>
-  <div><label class="f">Cintura (cm)</label><input id="d_cint" type="number" inputmode="decimal" step="0.1" min="40" max="250" value="${v("cintura")}"></div></div>
+  <div>${labelHelp("Cintura (cm)","cintura")}<input id="d_cint" type="number" inputmode="decimal" step="0.1" min="40" max="250" value="${v("cintura")}"></div></div>
   <div class="grid2"><div><label class="f">Calorias</label><input id="d_kcal" type="number" inputmode="numeric" min="0" max="15000" value="${v("kcal")}"></div>
   <div><label class="f">Proteína (g)</label><input id="d_prot" type="number" inputmode="numeric" min="0" max="1000" value="${v("prot")}"></div></div>
   <div class="grid2"><div><label class="f">Sono (h)</label><input id="d_sono" type="number" inputmode="decimal" step="0.5" min="0" max="24" value="${v("sono")}"></div>
-  <div><label class="f">Aderência (%)</label><input id="d_ader" type="number" inputmode="numeric" min="0" max="100" value="${v("aderencia")}"></div></div>
+  <div>${labelHelp("Seguiu o plano? (%)","aderencia")}<input id="d_ader" type="number" inputmode="numeric" min="0" max="100" value="${v("aderencia")}"></div></div>
   ${actions("Salvar")}</form>`); }
 function mTreino(id){ const r=id?S.treino.find(x=>x.id===id):null; const v=k=>r?esc(r[k]||""):"";
   openSheet(`<h2 id="sheetTitle">${r?"Editar":"Registrar"} treino</h2><form onsubmit="return App.saveTreino(event,'${r?r.id:""}')">
@@ -415,40 +455,69 @@ function mSuple(){ openSheet(`<h2 id="sheetTitle">Novo suplemento</h2><form onsu
   ${actions("Adicionar")}</form>`); }
 
 /* ================= onboarding ================= */
+/* passos: 0 boas-vindas • 1 sobre você • 2 rotina • 3 objetivo • 4 resultado */
+const OB_LAST=4;
 function vOnboarding(){ const s=ui.obStep, ob=ui.ob;
-  const dots=`<div class="steps" role="progressbar" aria-label="Etapa ${s+1} de 4" aria-valuemin="1" aria-valuemax="4" aria-valuenow="${s+1}">${[0,1,2,3].map(i=>`<i class="${i<=s?"on":""}"></i>`).join("")}</div>`;
-  if(s===0) return `<div class="hero"><img src="assets/cover.jpg" alt="Capa do guia FORTIS"></div><div class="card gold" style="text-align:center"><h2>Bem-vindo ao método FORTIS 🛡️</h2><p class="small">Calorias, macros e progresso — <b>sem passar fome</b>.</p>${dots}
-   <div style="text-align:left"><label class="f">Como podemos te chamar?</label><input id="ob_nome" value="${esc(ob.nome||"")}" placeholder="Seu nome" autocomplete="given-name" maxlength="80">
-   <label class="f">Sexo</label><select id="ob_sexo">${selOpts(["Masculino","Feminino"],ob.sexo||"")}</select></div>
-   <div class="rowbtns"><button class="btn btn-ghost" onclick="App.obSkip()">Depois</button><button class="btn btn-gold" onclick="App.obNext()">Continuar</button></div></div>`;
-  if(s===1) return `<div class="card"><h2>Medidas básicas</h2>${dots}
-   <div class="grid3"><div><label class="f">Idade</label><input id="ob_idade" type="number" inputmode="numeric" min="10" max="100" value="${esc(ob.idade||"")}"></div>
-   <div><label class="f">Peso kg</label><input id="ob_peso" type="number" inputmode="decimal" step="0.1" min="30" max="300" value="${esc(ob.peso||"")}"></div>
-   <div><label class="f">Altura cm</label><input id="ob_alt" type="number" inputmode="numeric" min="100" max="250" value="${esc(ob.altura||"")}"></div></div>
-   <div class="rowbtns"><button class="btn btn-ghost" onclick="App.obBack()">Voltar</button><button class="btn btn-gold" onclick="App.obNext()">Continuar</button></div></div>`;
-  if(s===2) return `<div class="card"><h2>Rotina e objetivo</h2>${dots}
-   <label class="f">Nível de atividade</label><select id="ob_ativ">${selOpts(D.ACTS,ob.atividade||"")}</select>
-   <label class="f">Objetivo</label><select id="ob_obj">${selOpts(D.GOALS,ob.objetivo||"")}</select>
-   <div class="rowbtns"><button class="btn btn-ghost" onclick="App.obBack()">Voltar</button><button class="btn btn-gold" onclick="App.obNext()">Continuar</button></div></div>`;
-  return `<div class="card gold"><h2>Metas de macros</h2>${dots}
-   <p class="small">Sugerimos <b>2,0 g/kg de proteína</b> e <b>1,0 g/kg de gordura</b> (referência inicial do método). Você pode ajustar depois.</p>
-   <div class="grid2"><div><label class="f">Proteína g/kg</label><input id="ob_p" type="number" inputmode="decimal" step="0.1" min="0" max="5" value="${esc(ob.protKg??2)}"></div>
-   <div><label class="f">Gordura g/kg</label><input id="ob_g" type="number" inputmode="decimal" step="0.1" min="0" max="5" value="${esc(ob.gordKg??1)}"></div></div>
-   <div class="rowbtns"><button class="btn btn-ghost" onclick="App.obBack()">Voltar</button><button class="btn btn-gold" onclick="App.obFinish()">Começar! 💪</button></div></div>`;
+  const head=(t,sub)=>`<div class="obhead"><div class="obstep">Passo ${s} de ${OB_LAST}</div><div class="steps" role="progressbar" aria-label="Passo ${s} de ${OB_LAST}" aria-valuemin="1" aria-valuemax="${OB_LAST}" aria-valuenow="${s}">${[1,2,3,4].map(i=>`<i class="${i<=s?"on":""}"></i>`).join("")}</div><h2>${t}</h2>${sub?`<p class="small muted">${sub}</p>`:""}</div>`;
+  const nav=(next)=>`<div class="rowbtns"><button class="btn btn-ghost" onclick="App.obBack()">Voltar</button><button class="btn btn-gold" onclick="App.obNext()">${next||"Continuar"}</button></div>`;
+  if(s===0) return `<div class="welcome">
+    <img class="wlogo" src="assets/logo.svg" width="132" height="154" alt="">
+    <h2 class="wtitle">Ganhe massa magra<span>sem passar fome</span></h2>
+    <div class="brushbar"></div>
+    <p class="wlead">Em 2 minutos o FORTIS calcula <b>quanto você deve comer por dia</b> e te ajuda a acompanhar sua evolução.</p>
+    <ul class="wlist">
+      <li><span aria-hidden="true">🔥</span><div><b>Quanto comer</b><small>Calorias e proteína certas para o seu corpo</small></div></li>
+      <li><span aria-hidden="true">🍽️</span><div><b>O que comer</b><small>Monte refeições com ${D.FOODS.length} alimentos do dia a dia</small></div></li>
+      <li><span aria-hidden="true">📈</span><div><b>Sua evolução</b><small>Registre peso e treino e veja gráficos semanais</small></div></li>
+    </ul>
+    <button class="btn btn-gold" onclick="App.obNext()">Começar</button>
+    <button class="linkbtn" onclick="App.obSkip()">Só quero explorar o app</button>
+    <p class="wpriv">🔒 Sem cadastro e sem internet: seus dados ficam só no seu celular.</p></div>`;
+  if(s===1) return `<div class="card">${head("Sobre você","Usamos esses dados para estimar quanto seu corpo gasta por dia.")}
+   <label class="f">Como podemos te chamar?</label><input id="ob_nome" value="${esc(ob.nome||"")}" placeholder="Seu nome (opcional)" autocomplete="given-name" maxlength="80">
+   <div class="f">Sexo</div>${optCards("Sexo",sexItems(),ob.sexo||"","App.obPick_sexo").replace('class="opts"','class="opts two"')}
+   <div class="grid3"><div><label class="f">Idade</label><input id="ob_idade" type="number" inputmode="numeric" min="10" max="100" placeholder="anos" value="${esc(ob.idade||"")}"></div>
+   <div><label class="f">Peso</label><input id="ob_peso" type="number" inputmode="decimal" step="0.1" min="30" max="300" placeholder="kg" value="${esc(ob.peso||"")}"></div>
+   <div><label class="f">Altura</label><input id="ob_alt" type="number" inputmode="numeric" min="100" max="250" placeholder="cm" value="${esc(ob.altura||"")}"></div></div>
+   ${nav()}</div>`;
+  if(s===2) return `<div class="card">${head("Quanto você se movimenta?","Pense numa semana normal, contando treino e trabalho.")}
+   ${optCards("Nível de atividade",actItems(),ob.atividade||"","App.obPick_atividade")}${nav()}</div>`;
+  if(s===3) return `<div class="card">${head("Qual é o seu objetivo?","")}
+   <div class="goldbox small" style="margin-bottom:10px">💡 Para ganhar músculo, o corpo precisa de <b>um pouco mais de comida do que gasta</b>. Quanto mais você come a mais, mais rápido ganha peso — mas também mais gordura. ${helpBtn("superavit")}</div>
+   ${optCards("Objetivo",goalItems(),ob.objetivo||"","App.obPick_objetivo")}${nav("Ver meu resultado")}</div>`;
+  const pf=C.calcPerfil(ob,D.ACTS,D.GOALS), mc=C.calcMacros(ob,{protKg:2,gordKg:1},D.ACTS,D.GOALS);
+  if(!pf||!mc) return `<div class="card">${head("Quase lá","")}<p class="small">Faltam alguns dados para calcular. Volte e preencha sexo, idade, peso, altura, rotina e objetivo.</p>${nav("Começar mesmo assim")}</div>`;
+  return `<div class="card gold">${head(`Pronto${ob.nome?", "+esc(ob.nome.split(" ")[0]):""}! 💪`,"Este é o seu ponto de partida:")}
+   ${resultKpis(pf)}
+   <h3>Divididos assim ${helpBtn("macros")}</h3>
+   <div class="kpis"><div class="kpi"><div class="l">🥩 Proteína</div><div class="v">${fi(mc.protG)} <em>g</em></div></div>
+   <div class="kpi"><div class="l">🍚 Carboidratos</div><div class="v">${fi(Math.max(0,mc.carbsG))} <em>g</em></div></div>
+   <div class="kpi"><div class="l">🥑 Gordura</div><div class="v">${fi(mc.gordG)} <em>g</em></div></div>
+   <div class="kpi"><div class="l">🥦 Fibras</div><div class="v">${mc.fibra} <em>g</em></div></div></div>
+   <p class="small muted" style="margin:10px 0 0">Você pode mudar tudo isso depois em <b>Mais → Perfil e metas</b>.</p>
+   <div class="rowbtns"><button class="btn btn-ghost" onclick="App.obBack()">Voltar</button><button class="btn btn-gold" onclick="App.obNext()">Começar a usar</button></div></div>`;
 }
-/* lê os campos do passo atual para ui.ob (assim "Voltar" não perde o que foi digitado) */
+/* lê os campos digitáveis do passo atual para ui.ob (assim "Voltar" não perde nada) */
 function obCollect(){ const o=ui.ob, val=id=>{ const el=$(id); return el?el.value.trim():undefined; };
   const set=(k,v)=>{ if(v!==undefined) o[k]=v; };
-  set("nome",val("#ob_nome")); set("sexo",val("#ob_sexo"));
-  set("idade",val("#ob_idade")); set("peso",val("#ob_peso")); set("altura",val("#ob_alt"));
-  set("atividade",val("#ob_ativ")); set("objetivo",val("#ob_obj"));
-  set("protKg",val("#ob_p")); set("gordKg",val("#ob_g")); }
+  set("nome",val("#ob_nome")); set("idade",val("#ob_idade")); set("peso",val("#ob_peso")); set("altura",val("#ob_alt")); }
 function obValidate(step){ const o=ui.ob;
   if(step===1){ const i=num(o.idade),p=num(o.peso),a=num(o.altura);
-    if(i!=null&&(i<10||i>100)) return "Idade deve estar entre 10 e 100 anos.";
-    if(p!=null&&(p<30||p>300)) return "Peso deve estar entre 30 e 300 kg.";
-    if(a!=null&&(a<100||a>250)) return "Altura deve estar entre 100 e 250 cm."; }
+    if(!o.sexo) return "Escolha Homem ou Mulher (o cálculo muda conforme o sexo).";
+    if(i==null||i<10||i>100) return "Informe sua idade (entre 10 e 100 anos).";
+    if(p==null||p<30||p>300) return "Informe seu peso em kg (entre 30 e 300).";
+    if(a==null||a<100||a>250) return "Informe sua altura em centímetros (ex.: 175).";
+  }
+  if(step===2&&!o.atividade) return "Escolha a opção que mais combina com a sua rotina.";
+  if(step===3&&!o.objetivo) return "Escolha um objetivo.";
   return ""; }
+function obFinish(){ const o=ui.ob;
+  S.profile={nome:o.nome||"",sexo:o.sexo||"",idade:o.idade||"",peso:o.peso||"",altura:o.altura||"",atividade:o.atividade||"",objetivo:o.objetivo||""};
+  S.macros={protKg:2,gordKg:1};
+  S.onboarded=true; save(); ui.ob={}; ui.obStep=0; ui.view=calcPerfil()?"inicio":"perfil"; ui.tab=ui.view==="inicio"?"inicio":"mais";
+  render(); window.scrollTo(0,0);
+  if(ui.view==="perfil") toast("Complete os campos que faltam para calcular suas metas."); }
+const PICK={sexo:()=>SEXOS.map(s=>s[0]),atividade:()=>D.ACTS.map(a=>a[0]),objetivo:()=>D.GOALS.map(g=>g[0])};
 
 /* ================= API pública ================= */
 let deferredPrompt=null;
@@ -468,10 +537,12 @@ window.App={
  close:closeSheet, confirmYes(){ const f=_confirmCb; _confirmCb=null; closeSheet(); if(f) f(); },
  install(){ if(deferredPrompt){ deferredPrompt.prompt(); deferredPrompt.userChoice.finally(()=>{ deferredPrompt=null; render(); }); } },
  /* atualiza só o bloco de resultados: re-renderizar a tela inteira tiraria o foco do campo seguinte */
- pfSave(){ S.profile={nome:$("#pf_nome").value.trim(),sexo:$("#pf_sexo").value,idade:$("#pf_idade").value,peso:$("#pf_peso").value,altura:$("#pf_altura").value,atividade:$("#pf_ativ").value,objetivo:$("#pf_obj").value};
+ pfSave(){ const p=S.profile;
+   S.profile={...p,nome:$("#pf_nome").value.trim(),idade:$("#pf_idade").value,peso:$("#pf_peso").value,altura:$("#pf_altura").value};
    save(); $("#pfResult").innerHTML=vPerfilResult(); },
  mcSave(){ const p=num($("#mc_p").value),g=num($("#mc_g").value);
    S.macros={protKg:p!=null&&p>=0?p:S.macros.protKg,gordKg:g!=null&&g>=0?g:S.macros.gordKg}; save(); $("#mcResult").innerHTML=vMacrosResult(); },
+ help(k){ const g=GLOSS[k]; if(!g) return; openSheet(`<h2 id="sheetTitle">${g[0]}</h2><p class="small" style="line-height:1.6">${g[1]}</p><div class="rowbtns"><button class="btn btn-gold" onclick="App.close()">Entendi</button></div>`); },
  mPlanItem, mDiary, mTreino, mFood, mShopItem, mSuple,
  savePlan(e){ e.preventDefault(); const m=foodMap(),f=$("#m_f").value.trim(),q=$("#m_q").value;
    if(!m[f]){ toast("Escolha um alimento válido do banco (digite e selecione da lista)."); $("#m_f").focus(); return false; }
@@ -550,22 +621,21 @@ window.App={
  resetAll(){ mConfirm("Apagar TODOS os dados do app? Isso não pode ser desfeito.",()=>{ S=C.defState(); save(); ui.view="inicio"; ui.tab="inicio"; ui.ob={}; ui.obStep=0; render(); window.scrollTo(0,0); },"Apagar tudo"); },
  /* onboarding */
  obNext(){ obCollect(); const err=obValidate(ui.obStep); if(err){ toast(err); return; }
-   ui.obStep=Math.min(3,ui.obStep+1); render(); window.scrollTo(0,0); },
+   if(ui.obStep>=OB_LAST){ obFinish(); return; }
+   ui.obStep++; render(); window.scrollTo(0,0); },
  obBack(){ obCollect(); ui.obStep=Math.max(0,ui.obStep-1); render(); window.scrollTo(0,0); },
- obSkip(){ obCollect(); const o=ui.ob; if(o.nome) S.profile.nome=o.nome; if(o.sexo) S.profile.sexo=o.sexo;
-   S.onboarded=true; save(); ui.view="inicio"; ui.tab="inicio"; render(); window.scrollTo(0,0); },
- obFinish(){ obCollect(); const o=ui.ob;
-   S.profile={nome:o.nome||"",sexo:o.sexo||"",idade:o.idade||"",peso:o.peso||"",altura:o.altura||"",atividade:o.atividade||"",objetivo:o.objetivo||""};
-   const p=num(o.protKg),g=num(o.gordKg);
-   S.macros={protKg:p!=null&&p>=0?p:2,gordKg:g!=null&&g>=0?g:1};
-   S.onboarded=true; save(); ui.ob={}; ui.obStep=0; ui.view=calcPerfil()?"inicio":"perfil"; ui.tab=ui.view==="inicio"?"inicio":"mais";
-   render(); window.scrollTo(0,0);
-   if(ui.view==="perfil") toast("Complete os campos que faltam para calcular suas metas."); }
+ obSkip(){ obCollect(); S.onboarded=true; save(); ui.view="inicio"; ui.tab="inicio"; render(); window.scrollTo(0,0); }
 };
+
+Object.keys(PICK).forEach(f=>{
+  App["obPick_"+f]=(i)=>{ obCollect(); const v=PICK[f]()[i]; if(v!=null) ui.ob[f]=v; render(); };
+  App["pfPick_"+f]=(i)=>{ const v=PICK[f]()[i]; if(v==null) return; S.profile[f]=v; save(); const y=window.scrollY; render(); window.scrollTo(0,y); };
+});
 
 /* ---------- init ---------- */
 const modal=document.getElementById("modal");
 modal.addEventListener("click",e=>{ if(e.target.id==="modal") closeSheet(); });
+document.getElementById("toast").addEventListener("click",e=>e.currentTarget.classList.remove("show"));
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&modal.classList.contains("open")) closeSheet(); });
 if("serviceWorker" in navigator && /^https?:$/.test(location.protocol)){
   try{ navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).catch(()=>{}); }catch(e){}
