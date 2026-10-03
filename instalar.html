@@ -6,6 +6,10 @@
 <title>Instalar o app FORTIS</title>
 <meta name="description" content="Instale o app FORTIS — Calorias, Macros e Progresso. Grátis, offline, dados só no seu aparelho.">
 <meta name="theme-color" content="#0B0B0B">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FORTIS">
 <style>
 *{box-sizing:border-box}body{margin:0;background:#0B0B0B;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background-image:radial-gradient(800px 300px at 50% -100px,rgba(201,154,46,.12),transparent 60%)}
 .wrap{max-width:460px;margin:0 auto;padding:26px 16px 40px;text-align:center}
@@ -25,6 +29,19 @@ h1{font-family:Oswald,"Arial Narrow",Arial,sans-serif;font-size:26px;letter-spac
 h2{font-family:Oswald,"Arial Narrow",Arial,sans-serif;font-size:14px;letter-spacing:1px;color:#E8BE4E;text-transform:uppercase;margin:0 0 6px}
 .foot{color:#666;font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-top:14px}
 .foot b{color:#C99A2E}
+.btn-ghost{background:#1E1E1E;color:#E8BE4E;border:1px solid #7a5a14;font-size:14px;padding:12px}
+.btn[disabled]{opacity:.55;cursor:default}
+.note{font-size:13px;color:#B8B8B8;margin:10px 0 0}
+.warn{background:#2a1a0a;border:1px solid #7a5a14;border-radius:12px;padding:12px;font-size:14px;margin-bottom:10px;text-align:left}
+.step.big span b{color:#fff}
+.step.big{font-size:15px;align-items:flex-start;background:#101010;border:1px solid #2C2C2C;border-radius:12px;padding:12px;margin:8px 0}
+.step.big .n{font-style:normal;flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#F3D67C,#C99A2E 45%,#8a6517);color:#141414;display:inline-flex;align-items:center;justify-content:center;font-size:14px}
+.step small{display:block;color:#B8B8B8;font-size:12px;margin-top:2px}
+.ico{width:20px;height:20px;vertical-align:-4px;color:#4A9DFF;margin-left:2px}
+.arrow{font-size:30px;color:#E8BE4E;animation:bob 1.2s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(6px)}}
+@media (prefers-reduced-motion:reduce){.arrow{animation:none}}
+[hidden]{display:none!important}
 </style>
 </head>
 <body>
@@ -60,30 +77,101 @@ h2{font-family:Oswald,"Arial Narrow",Arial,sans-serif;font-size:14px;letter-spac
   <div class="sub">Calorias • Macros • Progresso</div>
   <div class="brush"></div>
 
-  <div class="card gold">
-    <h2>📲 Instale o app</h2>
-    <p style="font-size:13px;color:#B8B8B8">Aponte a câmera do celular para o QR code:</p>
+  <!-- Android: instalação em 1 toque (beforeinstallprompt) -->
+  <section id="v-android" class="card gold" hidden>
+    <h2>📲 Instale em 1 toque</h2>
+    <button id="btnInstall" class="btn btn-gold" disabled>Preparando…</button>
+    <p id="andHelp" class="note">Toque no botão e depois em <b>Instalar</b> na janela que aparecer.</p>
+    <div id="andManual" hidden>
+      <p id="andManualTitle" class="note" style="margin-top:12px">Se o botão não funcionar:</p>
+      <div class="step"><b>1.</b><span>Toque no menu <b>⋮</b> (canto superior direito do Chrome).</span></div>
+      <div class="step"><b>2.</b><span>Toque em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.</span></div>
+      <p id="andInstalled" class="note" hidden>Já instalou antes? Procure o ícone do escudo <b>FORTIS</b> na tela inicial.</p>
+    </div>
+  </section>
+
+  <!-- iPhone/iPad: passo a passo do Safari -->
+  <section id="v-ios" class="card gold" hidden>
+    <h2>📲 Instale no iPhone</h2>
+    <div id="iosNotSafari" class="warn" hidden>
+      ⚠️ Para instalar, esta página precisa estar aberta no <b>Safari</b>.
+      <button id="btnCopy" class="btn btn-ghost" style="margin-top:10px">Copiar link</button>
+      <span class="note">Depois abra o Safari, cole na barra de endereço e siga os passos abaixo.</span>
+    </div>
+    <div class="step big"><i class="n">1</i><span>Toque em <b>Compartilhar</b> <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10H6a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><small>na barra de baixo do Safari (no iPad, em cima)</small></span></div>
+    <div class="step big"><i class="n">2</i><span>Role e toque em <b>Adicionar à Tela de Início</b> <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span></div>
+    <div class="step big"><i class="n">3</i><span>Toque em <b>Adicionar</b>, no canto superior direito</span></div>
+    <div class="arrow" aria-hidden="true">⬇</div>
+  </section>
+
+  <!-- Computador: QR para abrir no celular -->
+  <section id="v-desktop" class="card gold" hidden>
+    <h2>📲 Instale no seu celular</h2>
+    <p class="note">Aponte a câmera do celular para o QR code:</p>
     <div class="qr"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUgAAAFIAQMAAAAI2vVwAAAABlBMVEULCwv///9vz9kOAAAB0ElEQVR42u2bS27EMAxDid7/ziwaWxJTdGF60wJlAmSCxNk86ENJHvD0QFZm5W+sxDrWV/g6AdazefuB0+M/r0TBB9ftArzu1rmxh+cxzwVwk+Q2zud33oanzXNxE1cX9w9PmyfH058Aym214XkXPxdZtq3Ws8RPkyc6Xv50Jr+bPFs6NVWynsvr8HT1UgEdq9wp/qEbnuf+3nGTmtdZgp7h6fp7FUNUnUR1//A8tk+23GyX73K0Y0J4GjzZHEG5aCQIT0MvtTXybbaYEj48HZ7QK7VJEn938xEmAYnnQ9J88vuFfVbPbm60TgpPQ89XuV76nSrkY5+u/pTs81L2FQASP8342Vp+Z/ruhJY4DU+vPhKyk+ExPdD4u5nf3zOkyk+oGik83XpT2vHSFEFbaXh69SZnTPzNZMPzRs9XKJ0qs8UT069z9fwIo242ScWU+t3X81UbQefEok7D0+CpjU50pu+BZ/SSa58ygtcEpTO68DT0fI85ZnuIjpNin24+Gl+Xrh1ngBSeXvyULpMU9bpLJDyPeULG7u8+8o6fye83PGV/IkWPZh53zVPHHbpvMfZ5Ez9n7g7JQ+l/3u+vm0SkOxiTj670Z/61kZV/buUnPb1KL9A6OdcAAAAASUVORK5CYII=" alt="QR code para instalar o app FORTIS"></div>
     <div class="url">https://luizandersonjus-svg.github.io/Fortis-Nutri-o/instalar.html</div>
-  </div>
+  </section>
 
-  <a class="btn btn-gold" href="./index.html">Abrir o app agora</a>
+  <section id="v-done" class="card gold" hidden>
+    <h2>✅ App instalado!</h2>
+    <p class="note">Procure o ícone do escudo <b>FORTIS</b> na tela inicial do seu celular.</p>
+  </section>
+
+  <a class="btn btn-ghost" href="./index.html" style="margin-top:12px">Usar no navegador, sem instalar</a>
 
   <div class="card" style="margin-top:12px">
-    <h2>🤖 Android (Chrome)</h2>
-    <div class="step"><b>1.</b><span>Abra o app pelo botão acima (ou pelo QR).</span></div>
-    <div class="step"><b>2.</b><span>Toque no menu <b>⋮</b> → <b>Instalar app</b> / <b>Adicionar à tela inicial</b>.</span></div>
-    <div class="step"><b>3.</b><span>Pronto! O ícone 🛡️ aparece junto aos seus apps e funciona <b>offline</b>.</span></div>
-  </div>
-
-  <div class="card">
-    <h2>🍎 iPhone (Safari)</h2>
-    <div class="step"><b>1.</b><span>Abra o app pelo botão acima (ou pelo QR) <b>no Safari</b>.</span></div>
-    <div class="step"><b>2.</b><span>Toque em <b>Compartilhar</b> → <b>Adicionar à Tela de Início</b>.</span></div>
-    <div class="step"><b>3.</b><span>Pronto! Use como um app normal, com seus dados <b>só no aparelho</b>.</span></div>
+    <h2>Por que instalar?</h2>
+    <div class="step"><b>✓</b><span>Abre pelo ícone, em tela cheia, como um app.</span></div>
+    <div class="step"><b>✓</b><span>Funciona <b>sem internet</b>.</span></div>
+    <div class="step"><b>✓</b><span>Grátis, sem cadastro, dados <b>só no seu celular</b>.</span></div>
   </div>
 
   <div class="foot"><b>FORTIS</b> • Disciplina, constância e fortaleza<br><span style="text-transform:none;letter-spacing:0">Ferramenta educacional. Não substitui profissional habilitado.</span></div>
 </div>
+<script>
+/* Mostra só o caminho de instalação do aparelho atual. Funciona também aberto como arquivo (prévia). */
+(function(){
+  var ua=navigator.userAgent||"", $=function(id){return document.getElementById(id);};
+  var isIOS=/iPad|iPhone|iPod/.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+  var isAndroid=/Android/i.test(ua);
+  var standalone=(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone;
+  if(standalone){ location.replace("./index.html"); return; }        // já instalado e aberto pelo ícone
+  var show=function(id){ $(id).hidden=false; };
+  if(isIOS){
+    show("v-ios");
+    // Chrome/Firefox/Edge no iPhone e navegadores internos (Instagram, Facebook…) não instalam: precisa ser o Safari
+    if(/CriOS|FxiOS|EdgiOS|OPiOS|GSA\/|FBAN|FBAV|Instagram|Line\//.test(ua)) show("iosNotSafari");
+    $("btnCopy").onclick=function(){
+      var u=location.href.split("#")[0];
+      (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){ $("btnCopy").textContent="✓ Link copiado"; },
+        function(){ prompt("Copie o link:",u); });
+    };
+  } else if(isAndroid){
+    show("v-android");
+    var deferred=null, btn=$("btnInstall");
+    window.addEventListener("beforeinstallprompt",function(e){
+      e.preventDefault(); deferred=e; btn.disabled=false; btn.textContent="📲 Instalar agora";
+    });
+    btn.onclick=function(){
+      if(!deferred) return;
+      deferred.prompt();
+      deferred.userChoice.then(function(c){ deferred=null;
+        if(c&&c.outcome==="accepted"){ $("v-android").hidden=true; show("v-done"); }
+        else { btn.textContent="📲 Tentar de novo"; show("andManual"); }
+      });
+    };
+    // navegador sem instalação em 1 toque (ex.: Firefox) ou app já instalado: mostra o caminho manual
+    setTimeout(function(){ if(!deferred){ btn.hidden=true; $("andHelp").hidden=true; show("andManual");
+      $("andManualTitle").innerHTML="Para instalar, siga 2 passos:";
+      $("andInstalled").hidden=false; } },3500);
+    window.addEventListener("appinstalled",function(){ $("v-android").hidden=true; show("v-done"); });
+  } else {
+    show("v-desktop");
+  }
+  if("serviceWorker" in navigator && /^https?:$/.test(location.protocol)){
+    navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).catch(function(){});
+  }
+})();
+</script>
 </body>
 </html>
