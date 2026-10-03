@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>FORTIS — Instale seu app (página do ebook)</title>
+<style>
+@font-face{font-family:"Oswald";font-weight:400 700;src:url("../fonts/oswald-latin.woff2") format("woff2")}
+@page{size:A4;margin:0}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{width:210mm;height:297mm;background:#0B0B0B;color:#fff;font-family:"Helvetica Neue",Arial,sans-serif;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  background-image:radial-gradient(160mm 70mm at 50% -10mm,rgba(201,154,46,.20),transparent 70%),
+  repeating-linear-gradient(135deg,rgba(255,255,255,.015) 0 2px,transparent 2px 5px)}
+.page{height:297mm;padding:14mm 16mm 12mm;display:flex;flex-direction:column;align-items:center;text-align:center;
+  border:1.2mm solid transparent;border-image:linear-gradient(180deg,#8a6517,#E8BE4E 40%,#8a6517) 1}
+.logo{width:30mm;height:36mm;filter:drop-shadow(0 2mm 6mm rgba(201,154,46,.35))}
+h1{font-family:Oswald,"Arial Narrow",sans-serif;font-size:15mm;line-height:1;margin:4mm 0 0;letter-spacing:.6mm;text-transform:uppercase}
+h1 span{display:block;font-size:8.6mm;margin-top:2mm;background:linear-gradient(135deg,#F3D67C,#C99A2E 45%,#8a6517);-webkit-background-clip:text;background-clip:text;color:transparent}
+.brush{width:70mm;height:2.6mm;border-radius:2mm;margin:5mm auto 4mm;background:linear-gradient(100deg,#8a6517,#E8BE4E 30%,#C99A2E 55%,#F3D67C 75%,#8a6517)}
+.lead{font-size:4.6mm;color:#ddd;margin:0 0 7mm;max-width:150mm;line-height:1.4}
+.lead b{color:#E8BE4E}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:6mm;width:100%}
+.box{background:linear-gradient(180deg,#1d1507,#121212);border:.5mm solid #7a5a14;border-radius:5mm;padding:6mm 5mm;display:flex;flex-direction:column;align-items:center}
+.tag{font-family:Oswald,"Arial Narrow",sans-serif;color:#E8BE4E;text-transform:uppercase;letter-spacing:.5mm;font-size:4.4mm;margin-bottom:1.5mm}
+.sub{color:#B8B8B8;font-size:3.6mm;margin:0 0 5mm;line-height:1.35}
+.btn{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:30mm;border-radius:4mm;text-decoration:none;
+  background:linear-gradient(135deg,#F3D67C,#C99A2E 45%,#8a6517);color:#141414;font-family:Oswald,"Arial Narrow",sans-serif;
+  font-weight:700;font-size:7mm;line-height:1.1;text-transform:uppercase;letter-spacing:.4mm;box-shadow:0 2mm 6mm rgba(201,154,46,.35)}
+.btn small{display:block;font-size:4mm;letter-spacing:.2mm;margin-top:1mm;font-weight:500}
+.hand{font-size:11mm;margin:4mm 0 0}
+.qr{background:#fff;border-radius:3mm;padding:2.5mm;width:46mm;height:46mm}
+.qrsvg{width:100%;height:100%;display:block}
+.steps{display:grid;grid-template-columns:1fr 1fr;gap:6mm;width:100%;margin-top:6mm;text-align:left}
+.steps .box{align-items:stretch;padding:5mm}
+.steps h2{font-family:Oswald,"Arial Narrow",sans-serif;font-size:5mm;color:#E8BE4E;text-transform:uppercase;letter-spacing:.4mm;margin:0 0 3mm}
+.steps ol{margin:0;padding-left:5mm;font-size:3.7mm;line-height:1.45;color:#eee}
+.steps li{margin-bottom:1.5mm}
+.steps b{color:#fff}
+.feat{display:flex;gap:3mm;justify-content:center;flex-wrap:wrap;margin-top:6mm}
+.feat span{border:.4mm solid #7a5a14;border-radius:10mm;padding:1.6mm 4mm;font-size:3.4mm;color:#E8BE4E}
+.foot{margin-top:auto;font-size:3mm;color:#8c8c8c;line-height:1.4}
+.foot b{color:#C99A2E;font-family:Oswald,"Arial Narrow",sans-serif;letter-spacing:.4mm}
+</style>
+</head>
+<body><div class="page">
+<svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240">
+<defs>
+<linearGradient id="fgold" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="#F4CF6A"/><stop offset=".35" stop-color="#DDA233"/><stop offset=".7" stop-color="#B27820"/><stop offset="1" stop-color="#734A10"/>
+</linearGradient>
+<radialGradient id="fshine" cx=".38" cy=".3" r=".75">
+<stop offset="0" stop-color="#FFF1B8" stop-opacity=".55"/><stop offset=".5" stop-color="#FFF1B8" stop-opacity="0"/>
+</radialGradient>
+<filter id="fleaf" x="0" y="0" width="1" height="1">
+<feTurbulence type="fractalNoise" baseFrequency=".16 .2" numOctaves="4" seed="11" result="n"/>
+<feColorMatrix in="n" type="matrix" values="0 0 0 0 .36  0 0 0 0 .22  0 0 0 0 .03  0 0 0 -2.8 1.62" result="spots"/>
+<feComposite in="spots" in2="SourceGraphic" operator="atop"/>
+</filter>
+</defs>
+<path d="M100 8 188 32V120C188 176 152 210 100 234 48 210 12 176 12 120V32Z" fill="url(#fgold)" filter="url(#fleaf)"/>
+<path d="M100 8 188 32V120C188 176 152 210 100 234 48 210 12 176 12 120V32Z" fill="url(#fshine)"/>
+<path d="M100 24 174 44V120C174 167 144 196 100 217 56 196 26 167 26 120V44Z" fill="#0B0B0B"/>
+<path d="M100 24 174 44V120C174 167 144 196 100 217 56 196 26 167 26 120V44Z" fill="none" stroke="#000" stroke-opacity=".6" stroke-width="2"/>
+<g>
+<path id="helm" d="M100 38C103 47 107 53 113 56 132 64 143 80 143 100L142 140C142 162 135 186 124 214L100 200 76 214C65 186 58 162 58 140L57 100C57 80 68 64 87 56 93 53 97 47 100 38Z" fill="url(#fgold)" filter="url(#fleaf)"/>
+<path d="M100 38C103 47 107 53 113 56 132 64 143 80 143 100L142 140C142 162 135 186 124 214L100 200 76 214C65 186 58 162 58 140L57 100C57 80 68 64 87 56 93 53 97 47 100 38Z" fill="url(#fshine)" stroke="#5a3c0a" stroke-width="1.5"/>
+<path d="M63 117H137L129 139 108 145 111 212H89L92 145 71 139Z" fill="#0B0B0B"/>
+<path d="M89 117H111L106 150 100 162 94 150Z" fill="url(#fgold)" filter="url(#fleaf)"/>
+<path d="M80 70C67 79 61 90 60 106 65 92 72 84 84 76Z" fill="#0B0B0B"/>
+<path d="M120 70C133 79 139 90 140 106 135 92 128 84 116 76Z" fill="#0B0B0B"/>
+</g>
+</svg>
+<h1>Seu app FORTIS<span>Calorias • Macros • Progresso</span></h1>
+<div class="brush"></div>
+<p class="lead">Descubra <b>quanto comer por dia</b>, monte suas refeições e acompanhe sua evolução — tudo no seu celular, como um aplicativo.</p>
+
+<div class="opts">
+  <div class="box">
+    <div class="tag">📱 Lendo no celular?</div>
+    <p class="sub">Toque no botão abaixo e siga os passos para instalar.</p>
+    <a class="btn" href="https://luizandersonjus-svg.github.io/Fortis-Nutri-o/instalar.html"><span>Toque aqui<br>para instalar</span><small>abre a página do app</small></a>
+    <div class="hand" aria-hidden="true">👆</div>
+  </div>
+  <div class="box">
+    <div class="tag">💻 No computador ou impresso?</div>
+    <p class="sub">Aponte a câmera do celular para o código e toque no aviso que aparecer.</p>
+    <a class="qr" href="https://luizandersonjus-svg.github.io/Fortis-Nutri-o/instalar.html"><svg class="qrsvg" viewBox="0 0 410 410" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg" class="segno"><g transform="scale(10)"><path fill="#fff" d="M0 0h41v41h-41z"/><path class="qrline" stroke="#0b0b0b" d="M2 2.5h7m2 0h1m3 0h1m1 0h1m1 0h3m1 0h6m3 0h7m-37 1h1m5 0h1m1 0h1m2 0h1m2 0h1m2 0h3m1 0h1m2 0h1m1 0h1m1 0h1m1 0h1m5 0h1m-37 1h1m1 0h3m1 0h1m1 0h1m2 0h3m2 0h1m1 0h5m1 0h1m1 0h2m2 0h1m1 0h3m1 0h1m-37 1h1m1 0h3m1 0h1m1 0h3m1 0h1m3 0h6m3 0h1m2 0h1m1 0h1m1 0h3m1 0h1m-37 1h1m1 0h3m1 0h1m4 0h3m1 0h1m2 0h3m1 0h2m1 0h2m1 0h1m1 0h1m1 0h3m1 0h1m-37 1h1m5 0h1m3 0h1m1 0h2m1 0h2m1 0h1m1 0h3m3 0h1m3 0h1m5 0h1m-37 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-29 1h5m1 0h1m1 0h1m3 0h2m6 0h1m-29 1h1m5 0h1m1 0h6m1 0h1m2 0h1m1 0h8m1 0h2m2 0h3m-36 1h3m1 0h2m1 0h2m1 0h1m2 0h1m3 0h1m2 0h1m1 0h1m1 0h1m1 0h2m3 0h3m1 0h1m-31 1h3m3 0h2m4 0h1m2 0h1m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m3 0h2m-37 1h2m1 0h2m3 0h1m2 0h6m1 0h1m9 0h1m1 0h4m2 0h1m-37 1h2m1 0h1m1 0h4m1 0h1m3 0h1m4 0h1m4 0h1m2 0h2m1 0h2m1 0h2m1 0h1m-37 1h4m6 0h1m1 0h1m1 0h7m2 0h2m1 0h4m1 0h1m1 0h1m-34 1h4m1 0h5m1 0h5m1 0h1m3 0h1m5 0h1m1 0h1m1 0h3m2 0h1m-36 1h2m2 0h1m1 0h1m1 0h2m2 0h1m1 0h4m1 0h1m2 0h2m2 0h1m1 0h1m1 0h1m1 0h3m-36 1h4m1 0h3m2 0h1m1 0h1m2 0h2m2 0h1m1 0h1m2 0h3m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m-37 1h1m2 0h3m3 0h1m1 0h1m1 0h2m2 0h2m1 0h1m1 0h2m2 0h3m4 0h3m-34 1h1m2 0h2m1 0h4m2 0h2m1 0h2m1 0h1m2 0h1m2 0h2m2 0h1m1 0h2m2 0h1m-36 1h3m3 0h2m3 0h2m5 0h2m1 0h1m3 0h2m1 0h2m1 0h2m2 0h1m-33 1h4m3 0h3m1 0h3m1 0h1m3 0h1m1 0h3m1 0h2m1 0h1m1 0h1m-34 1h2m7 0h1m1 0h1m2 0h1m2 0h2m1 0h3m2 0h2m4 0h1m1 0h2m-36 1h2m1 0h2m1 0h1m1 0h2m1 0h1m1 0h1m1 0h2m1 0h1m3 0h1m2 0h1m1 0h3m1 0h3m1 0h2m-37 1h2m1 0h1m1 0h1m2 0h3m1 0h5m3 0h2m7 0h1m1 0h3m1 0h2m-36 1h2m2 0h4m5 0h1m1 0h4m1 0h1m1 0h2m1 0h2m2 0h2m3 0h1m-36 1h5m2 0h1m1 0h2m2 0h2m1 0h2m3 0h1m1 0h1m1 0h1m1 0h2m2 0h1m1 0h1m-34 1h1m2 0h4m1 0h1m2 0h2m1 0h1m2 0h1m2 0h1m1 0h1m1 0h4m4 0h1m2 0h2m-37 1h1m4 0h1m1 0h4m2 0h1m1 0h1m4 0h1m1 0h1m4 0h1m1 0h2m1 0h3m-35 1h1m2 0h1m1 0h3m1 0h1m4 0h1m2 0h2m1 0h1m1 0h1m2 0h2m1 0h5m1 0h1m1 0h1m-29 1h1m2 0h1m3 0h6m2 0h1m1 0h1m2 0h1m3 0h1m-33 1h7m2 0h1m1 0h1m3 0h2m2 0h1m1 0h4m3 0h1m1 0h1m1 0h1m3 0h1m-37 1h1m5 0h1m2 0h3m3 0h4m3 0h3m2 0h2m3 0h1m3 0h1m-37 1h1m1 0h3m1 0h1m2 0h1m1 0h3m1 0h2m2 0h1m1 0h1m1 0h1m1 0h8m1 0h3m-37 1h1m1 0h3m1 0h1m3 0h2m2 0h1m1 0h3m4 0h1m1 0h2m2 0h2m2 0h2m1 0h1m-37 1h1m1 0h3m1 0h1m3 0h1m1 0h1m1 0h4m1 0h1m2 0h1m1 0h6m3 0h1m1 0h2m-37 1h1m5 0h1m3 0h1m8 0h2m1 0h1m1 0h1m3 0h1m3 0h2m2 0h1m-37 1h7m1 0h1m1 0h2m3 0h3m2 0h1m3 0h1m3 0h1m1 0h2m4 0h1"/></g></svg></a>
+  </div>
+</div>
+
+<div class="steps">
+  <div class="box"><h2>🤖 Android</h2><ol>
+    <li>Abra o app pelo botão ou pelo QR code (no <b>Chrome</b>).</li>
+    <li>Toque em <b>Abrir o app agora</b>.</li>
+    <li>Toque no menu <b>⋮</b> → <b>Instalar app</b>.</li></ol></div>
+  <div class="box"><h2>🍎 iPhone</h2><ol>
+    <li>Abra o app pelo botão ou pelo QR code <b>no Safari</b>.</li>
+    <li>Toque em <b>Compartilhar</b> (quadrado com seta ↑).</li>
+    <li>Toque em <b>Adicionar à Tela de Início</b>.</li></ol></div>
+</div>
+
+<div class="feat"><span>✓ Grátis</span><span>✓ Sem cadastro</span><span>✓ Funciona sem internet</span><span>✓ Dados só no seu celular</span></div>
+
+<div class="foot"><b>FORTIS</b> • Disciplina, constância e fortaleza<br>Ferramenta educacional. Não substitui nutricionista, médico ou outro profissional habilitado.</div>
+</div></body></html>
