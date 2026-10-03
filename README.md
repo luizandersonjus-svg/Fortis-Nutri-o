@@ -30,6 +30,13 @@ Acompanha o ebook + planilha FORTIS. **PWA instalável, 100% offline, dados só 
   ```
   Suba novamente `instalar.html` + `assets/qr-install.png`.
 
+## Página de instalação para o ebook
+`ebook/pagina-instalacao.pdf` (A4, com **botão e QR clicáveis**) e `ebook/pagina-instalacao.png` (imagem para Canva — lá, adicione o link ao botão manualmente). Para regenerar após mudar o texto em `ebook/pagina-instalacao.html`:
+```bash
+npm install --no-save playwright && npx playwright install chromium
+node ebook/gerar.js
+```
+
 ## Como testar local
 Na raiz do repositório:
 ```bash
