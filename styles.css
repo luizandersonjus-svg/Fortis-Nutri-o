@@ -204,3 +204,24 @@ div.f{margin:10px 0 4px; font-size:12px; color:var(--gray); text-transform:upper
 .lnk{color:var(--gold-lt)}
 nav#tabbar:empty{display:none}
 #toast{bottom:auto; top:calc(12px + env(safe-area-inset-top,0px)); transform:translate(-50%,-20px); pointer-events:auto; cursor:pointer}
+
+/* ---------- identidade do ebook: escudo, metal e textura ---------- */
+body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.22;background-image:radial-gradient(circle at 20% 10%,rgba(232,190,78,.11),transparent 24%),repeating-linear-gradient(118deg,transparent 0 7px,rgba(255,255,255,.025) 8px,transparent 10px);mix-blend-mode:screen}
+#app{box-shadow:0 0 70px rgba(0,0,0,.45)}
+header{box-shadow:0 5px 24px rgba(0,0,0,.42)}
+.brand img{filter:drop-shadow(0 0 8px rgba(232,190,78,.42));}
+.brand .bt b{text-shadow:0 0 18px rgba(201,154,46,.18)}
+.card{position:relative;overflow:hidden}
+.card::before{content:"";position:absolute;inset:0 0 auto;height:1px;background:linear-gradient(90deg,transparent,rgba(232,190,78,.42),transparent);pointer-events:none}
+.card.gold{box-shadow:0 10px 30px rgba(0,0,0,.4),inset 0 1px rgba(243,214,124,.16)}
+.card.gold::after{content:"";position:absolute;right:-28px;top:-34px;width:110px;height:110px;border:1px solid rgba(232,190,78,.16);transform:rotate(45deg);pointer-events:none}
+.hero{border:1px solid var(--gold-dk);box-shadow:0 12px 30px rgba(0,0,0,.48)}
+.hero img{max-height:290px;object-fit:cover;object-position:center 35%;filter:saturate(.9) contrast(1.08)}
+.hero::before{content:"FORTIS";position:absolute;left:16px;top:14px;z-index:1;color:var(--gold-lt);font:700 12px Oswald,sans-serif;letter-spacing:3px;text-shadow:0 1px 8px #000}
+.btn-gold{background-size:180% 180%;transition:transform .18s ease,box-shadow .18s ease}
+.btn-gold:hover{transform:translateY(-1px);box-shadow:0 7px 22px rgba(201,154,46,.42)}
+.menurow,.item,.opt,.kpi{transition:border-color .18s ease,background .18s ease,transform .18s ease}
+.menurow:hover,.item:hover,.opt:hover{border-color:rgba(232,190,78,.55);transform:translateY(-1px)}
+nav#tabbar{box-shadow:0 -8px 24px rgba(0,0,0,.34)}
+@media(min-width:600px){#app{max-width:680px}nav#tabbar{max-width:680px}main#view{padding-left:18px;padding-right:18px}.hero img{max-height:330px}}
+@media(prefers-reduced-motion:reduce){.btn-gold,.menurow,.item,.opt{transition:none}.btn-gold:hover,.menurow:hover,.item:hover,.opt:hover{transform:none}}

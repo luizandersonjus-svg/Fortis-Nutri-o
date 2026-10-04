@@ -364,7 +364,7 @@ function vSuple(){ const seg=(key,val,nome)=>`<div class="seg" role="group" aria
   h+=`<div style="height:10px"></div><div class="warnbox">Pessoas com doença renal, condições clínicas relevantes ou uso contínuo de medicamentos devem buscar orientação profissional antes de iniciar qualquer suplemento.</div>`;
   return h;
 }
-function vSobre(){ return `<div class="hero"><img src="assets/cover.jpg" alt="Capa do guia FORTIS — Guia completo para ganhar massa magra" loading="lazy"></div>
+function vSobre(){ return `<div class="hero"><img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-zzEv8aiUXyc0FMlgiqC11JWN8CCJK2.png" alt="Capa do guia FORTIS — escudo dourado com capacete espartano sobre fundo preto" loading="lazy"></div>
   <div class="card gold"><h2>Guia completo para ganhar massa magra</h2>
   <div class="badges5">${D.BADGES5.map(b=>`<div><b aria-hidden="true">✓</b>${esc(b)}</div>`).join("")}</div>
   <p class="small" style="text-align:center"><b>Resultados reais, sem complicação.</b></p></div>
