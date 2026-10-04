@@ -216,3 +216,29 @@ test("sanitizeState: migra uso de suplementos da v1.1 (posição) para id", () =
   // estado já migrado (v2) é estável: sanitizar de novo não altera nada
   assert.deepEqual(C.sanitizeState(s, gen), s);
 });
+
+test("backupStatus: quando lembrar de fazer backup", () => {
+  const now = Date.parse("2026-10-04T12:00:00Z");
+  const dia = 864e5, iso = (ms) => new Date(ms).toISOString();
+  const diary = (n) => Array.from({ length: n }, (_, i) => ({ id: "d" + i, data: "2026-09-0" + ((i % 9) + 1) }));
+  const st = (extra) => ({ ...C.defState(), ...extra, meta: { ...C.defState().meta, ...(extra.meta || {}) } });
+
+  assert.equal(C.backupStatus(st({}), now).due, false, "sem dados, sem aviso");
+  assert.equal(C.backupStatus(st({ diary: diary(2), meta: { createdAt: iso(now - dia) } }), now).due, false, "pouco uso ainda");
+  assert.equal(C.backupStatus(st({ diary: diary(5) }), now).reason, "never", "5 registros sem nenhum backup");
+  assert.equal(C.backupStatus(st({ plan: [{ f: "x" }], meta: { createdAt: iso(now - 8 * dia) } }), now).reason, "never", "1 semana de uso");
+  assert.equal(C.backupStatus(st({ diary: diary(5), meta: { lastBackup: iso(now - 3 * dia) } }), now).due, false, "backup recente");
+  const old = C.backupStatus(st({ diary: diary(5), meta: { lastBackup: iso(now - 15 * dia) } }), now);
+  assert.equal(old.reason, "old"); assert.equal(old.days, 15);
+  assert.equal(C.backupStatus(st({ diary: diary(5), meta: { lastBackup: iso(now - dia), editsSinceBackup: 15 } }), now).reason, "many");
+  assert.equal(C.backupStatus(st({ diary: diary(9), meta: { snoozeUntil: iso(now + dia) } }), now).due, false, "adiado");
+  assert.equal(C.backupStatus(st({ diary: diary(9), meta: { snoozeUntil: iso(now - dia) } }), now).due, true, "adiamento venceu");
+});
+
+test("sanitizeState: valida os metadados de backup", () => {
+  const s = C.sanitizeState({ profile: {}, meta: { lastBackup: "2026-01-01T10:00:00Z", snoozeUntil: "lixo", editsSinceBackup: "-4" } }, gen);
+  assert.equal(s.meta.lastBackup, "2026-01-01T10:00:00.000Z");
+  assert.equal(s.meta.snoozeUntil, null);
+  assert.equal(s.meta.editsSinceBackup, 0);
+  assert.deepEqual(C.sanitizeState({}, gen).meta, C.defState().meta);
+});

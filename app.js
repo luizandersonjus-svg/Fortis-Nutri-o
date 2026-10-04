@@ -3,7 +3,7 @@
 "use strict";
 const D = window.FORTIS;
 const C = window.FORTIS_CORE;
-const VERSION = "1.3.1";
+const VERSION = "1.4";
 const $ = (s, r) => (r||document).querySelector(s);
 const $$ = (s, r) => Array.from((r||document).querySelectorAll(s));
 
@@ -140,6 +140,19 @@ function kcalExplica(pf){ if(!pf) return "";
   return extra>1?`Seu corpo gasta cerca de <b>${fi(pf.get)} kcal</b> por dia. Comendo <b>${fi(extra)} kcal a mais</b>, ele tem energia extra para construir músculo.`
     :`Seu corpo gasta cerca de <b>${fi(pf.get)} kcal</b> por dia. Comendo isso, seu peso tende a se manter.`; }
 
+/* ---------- backup: lembrete, envio em 1 toque e armazenamento persistente ---------- */
+const backupJSON=()=>JSON.stringify({...S,app:"FORTIS",exportadoEm:new Date().toISOString(),versaoApp:VERSION},null,1);
+const quandoFoi=(dias)=>dias==null?"":dias<=0?"hoje":dias===1?"ontem":`há ${dias} dias`;
+function pedirPersistencia(){ try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persisted().then(p=>{ if(!p) navigator.storage.persist(); }).catch(()=>{}); }catch(e){} }
+function marcarBackup(){ S.meta.lastBackup=new Date().toISOString(); S.meta.editsSinceBackup=0; S.meta.snoozeUntil=null; save(); pedirPersistencia(); }
+const contarEdicao=()=>{ S.meta.editsSinceBackup=(S.meta.editsSinceBackup||0)+1; };
+function avisoBackup(){ const b=C.backupStatus(S); if(!b.due) return "";
+  const msg=b.reason==="never"?"Seus dados ficam <b>só neste celular</b>. Se você trocar, perder ou formatar o aparelho sem backup, perde todo o histórico. Leva 30 segundos."
+    :b.reason==="old"?`Seu último backup foi <b>${quandoFoi(b.days)}</b>. Faça um novo para guardar seus registros recentes.`
+    :`Você fez <b>${b.edits} registros</b> desde o último backup. Faça um novo para não perdê-los.`;
+  return `<div class="card backupcard" role="region" aria-label="Lembrete de backup"><h2>💾 Proteja seus dados</h2><p class="small" style="margin:0">${msg}</p>
+   <div class="rowbtns"><button class="btn btn-ghost btn-sm" onclick="App.snoozeBackup()">Agora não</button><button class="btn btn-gold btn-sm" onclick="App.shareBackup()">Fazer backup</button></div></div>`; }
+
 /* ================= VIEWS ================= */
 function proximosPassos(){ const hoje=todayISO();
   const passos=[
@@ -170,6 +183,7 @@ function vInicio(){ const pf=calcPerfil(),mc=calcMacros();
     h+=`<div class="rowbtns" style="margin-top:12px"><button class="btn btn-gold" onclick="App.mDiary()">Registrar hoje</button></div>`;
   }
   h+=`</div>`;
+  h+=avisoBackup();
   h+=proximosPassos();
   h+=`<div class="card"><h2>Atalhos</h2>${menuRow("perfil","Perfil e metas","Seus dados e quanto comer por dia","👤")}${menuRow("macros","Proteína, carbo e gordura","Quantos gramas de cada por dia","🥩")}</div>`;
   const segRow=(seg,label,sub,ic)=>`<button class="menurow" onclick="App.goSeg('plano','${seg}')"><span class="ic" aria-hidden="true">${ic}</span><span style="flex:1">${label}<small>${sub}</small></span><span class="chev" aria-hidden="true">›</span></button>`;
@@ -331,7 +345,7 @@ function vProgresso(){ const pd=C.progressData(S.diary); const withN=pd.filter(w
 
 /* ----- mais ----- */
 function vMais(){
-  return `<div class="card"><h2>Ajustes e conteúdo</h2>${menuRow("perfil","Perfil e metas","Seus dados e calorias-alvo","👤")}${menuRow("macros","Macronutrientes","Metas de proteína, gordura e carbos","🥩")}${menuRow("compras","Lista de compras","Mercado e organização","🛒")}${menuRow("suple","Suplementação","Referências educacionais","💊")}${menuRow("sobre","Sobre o método","Como usar + avisos","🛡️")}${menuRow("backup","Backup e dados","Exportar, importar, apagar","💾")}</div>
+  return `<div class="card"><h2>Ajustes e conteúdo</h2>${menuRow("perfil","Perfil e metas","Seus dados e calorias-alvo","👤")}${menuRow("macros","Macronutrientes","Metas de proteína, gordura e carbos","🥩")}${menuRow("compras","Lista de compras","Mercado e organização","🛒")}${menuRow("suple","Suplementação","Referências educacionais","💊")}${menuRow("sobre","Sobre o método","Como usar + avisos","🛡️")}${menuRow("backup","Backup e dados",S.meta.lastBackup?`Último backup: ${quandoFoi(C.backupStatus(S).days)}`:"⚠ Nenhum backup ainda","💾")}</div>
   <div class="card"><h2>Instalar o app</h2><p class="small muted">No Android (Chrome): menu ⋮ → <b>Instalar app / Adicionar à tela inicial</b>. No iPhone: <b>Compartilhar → Adicionar à Tela de Início</b>. Depois funciona offline.</p><div class="rowbtns"><button class="btn btn-ghost btn-sm" id="btnInstall" style="display:none" onclick="App.install()">📲 Instalar agora</button><a class="btn btn-ghost btn-sm" href="instalar.html">🔗 Página de instalação (QR)</a></div></div>
   <footer class="appfoot"><b>FORTIS</b> v${VERSION} • Disciplina, constância e fortaleza</footer>`;
 }
@@ -377,11 +391,21 @@ function vSobre(){ return `<div class="hero"><img src="https://hebbkx1anhila5yf.
   <div class="warnbox">Esta ferramenta tem finalidade educacional e <b>não substitui</b> avaliação individual com nutricionista, médico ou outro profissional habilitado. Os resultados são estimativas. Pessoas com doenças, uso contínuo de medicamentos, gestantes, lactantes, menores de idade ou com histórico de transtornos alimentares devem buscar orientação profissional.</div>
   <footer class="appfoot"><b>FORTIS</b> • Nutrição, saúde e suplementação<br>Disciplina, constância e fortaleza</footer>`;
 }
-function vBackup(){ return `<div class="card"><h2>Seus dados</h2><p class="small muted">Tudo fica salvo <b>só neste aparelho</b> (privado, sem conta). Exporte um backup para não perder nada — limpar os dados do navegador apaga o app.</p>
-  <button class="btn btn-gold" onclick="App.exportJSON()">⬇ Exportar backup (JSON)</button>
+function vBackup(){ const b=C.backupStatus(S);
+  const status=S.meta.lastBackup?`<span class="pill ${b.due?"p-warn":"p-ok"}">${b.due?"⚠":"✓"} Último backup: ${quandoFoi(b.days)}</span>`
+    :`<span class="pill p-warn">⚠ Você ainda não fez nenhum backup</span>`;
+  return `<div class="card gold"><h2>💾 Backup dos seus dados</h2>${status}
+  <p class="small" style="margin:10px 0">Tudo fica salvo <b>só neste celular</b> (privado, sem conta). O backup é um arquivo com todos os seus dados — guarde-o no WhatsApp, e-mail ou Drive.</p>
+  <button class="btn btn-gold" onclick="App.shareBackup()">📤 Enviar backup (WhatsApp, e-mail, Drive)</button>
+  <button class="btn btn-ghost" onclick="App.exportJSON()">⬇ Baixar arquivo de backup</button></div>
+  <div class="card"><h2>📱 Trocou de celular?</h2>
+  <div class="checkrow"><b>1</b><span>No celular <b>antigo</b>: toque em <b>Enviar backup</b> e mande o arquivo para você mesmo.</span></div>
+  <div class="checkrow"><b>2</b><span>No celular <b>novo</b>: instale o FORTIS, toque em <b>“Só quero explorar o app”</b> e venha até esta tela.</span></div>
+  <div class="checkrow"><b>3</b><span>Toque em <b>Importar backup</b> e escolha o arquivo. Pronto: tudo volta como estava.</span></div>
   <button class="btn btn-ghost" onclick="document.getElementById('impFile').click()">⬆ Importar backup</button>
-  <input type="file" id="impFile" accept=".json,application/json" style="display:none" onchange="App.importFile(this)">
-  <button class="btn btn-ghost" onclick="App.exportCSV()">📄 Exportar registro (CSV)</button>
+  <input type="file" id="impFile" accept=".json,.txt,application/json,text/plain" style="display:none" onchange="App.importFile(this)"></div>
+  <div class="card"><h2>Outras opções</h2>
+  <button class="btn btn-ghost" onclick="App.exportCSV()">📄 Exportar registro diário (planilha CSV)</button>
   <button class="btn btn-danger" onclick="App.resetAll()">🗑 Apagar todos os dados</button></div>
   <div class="card"><h2>Sobre</h2><p class="small muted">FORTIS PWA v${VERSION} • Funciona offline após a primeira abertura • Português (Brasil)</p></div>`;
 }
@@ -472,7 +496,7 @@ function vOnboarding(){ const s=ui.obStep, ob=ui.ob;
     </ul>
     <button class="btn btn-gold" onclick="App.obNext()">Começar</button>
     <button class="linkbtn" onclick="App.obSkip()">Só quero explorar o app</button>
-    <p class="wpriv">🔒 Sem cadastro e sem internet: seus dados ficam só no seu celular.</p></div>`;
+    <p class="wpriv">🔒 Sem cadastro e sem internet: seus dados ficam só no seu celular.<br>💾 Trocou de aparelho? Leve tudo pelo backup, em <b>Mais → Backup e dados</b>.</p></div>`;
   if(s===1) return `<div class="card">${head("Sobre você","Usamos esses dados para estimar quanto seu corpo gasta por dia.")}
    <label class="f">Como podemos te chamar?</label><input id="ob_nome" value="${esc(ob.nome||"")}" placeholder="Seu nome (opcional)" autocomplete="given-name" maxlength="80">
    <div class="f">Sexo</div>${optCards("Sexo",sexItems(),ob.sexo||"","App.obPick_sexo").replace('class="opts"','class="opts two"')}
@@ -572,7 +596,7 @@ window.App={
    if(!inRange(r.peso,30,300)||!inRange(r.cintura,40,250)||!inRange(r.kcal,0,15000)||!inRange(r.prot,0,1000)||!inRange(r.sono,0,24)||!inRange(r.aderencia,0,100)){
      toast("Confira os intervalos: peso 30–300, cintura 40–250, kcal 0–15.000, proteína 0–1.000, sono 0–24, aderência 0–100."); return false; }
    ["peso","cintura","kcal","prot","sono","aderencia"].forEach(k=>{ if(r[k]!=="") r[k]=String(num(r[k])); });
-   const commit=(replaceId)=>{ S.diary=S.diary.filter(x=>x.id!==r.id&&x.id!==replaceId); S.diary.push(r); save(); closeSheet(); render(); };
+   const commit=(replaceId)=>{ S.diary=S.diary.filter(x=>x.id!==r.id&&x.id!==replaceId); S.diary.push(r); contarEdicao(); save(); pedirPersistencia(); closeSheet(); render(); };
    const dup=S.diary.find(x=>x.data===r.data&&x.id!==r.id);
    if(dup){ mConfirm(`Já existe um registro em ${dataBR(r.data)}. Substituir pelo novo?`,()=>commit(dup.id),"Substituir"); return false; }
    commit(null); return false; },
@@ -581,7 +605,7 @@ window.App={
    const r={id:id||uid(),data:g("#t_data"),grupo:g("#t_grupo"),exercicio:g("#t_ex"),series:g("#t_ser"),reps:g("#t_rep"),carga:g("#t_car"),obs:g("#t_obs")};
    if(!C.isISODate(r.data)){ toast("Informe uma data válida."); return false; }
    if(!inRange(r.series,0,50)||!inRange(r.carga,0,1000)){ toast("Confira séries (0–50) e carga (0–1.000 kg)."); return false; }
-   const i=S.treino.findIndex(x=>x.id===r.id); if(i>=0) S.treino[i]=r; else S.treino.push(r);
+   const i=S.treino.findIndex(x=>x.id===r.id); if(i>=0) S.treino[i]=r; else S.treino.push(r); contarEdicao();
    save(); closeSheet(); render(); return false; },
  treinoDel(id){ mConfirm("Excluir este treino?",()=>{ S.treino=S.treino.filter(x=>x.id!==id); save(); render(); }); },
  saveShop(e){ e.preventDefault(); const n=$("#s_n").value.trim(); if(!n) return false;
@@ -600,16 +624,29 @@ window.App={
  saveSuple(e){ e.preventDefault(); const g=x=>$(x).value.trim(); if(!g("#u_n")) return false;
    S.supleCustom.push({id:uid(),n:g("#u_n"),f:g("#u_f"),d:g("#u_d"),h:g("#u_h"),o:g("#u_o")}); save(); closeSheet(); render(); return false; },
  supleDel(id){ mConfirm("Excluir este suplemento?",()=>{ S.supleCustom=S.supleCustom.filter(s=>s.id!==id); delete S.supleUsa["c_"+id]; save(); render(); }); },
- exportJSON(){ const payload={...S,app:"FORTIS",exportadoEm:new Date().toISOString(),versaoApp:VERSION};
-   download(new Blob([JSON.stringify(payload,null,1)],{type:"application/json"}),`fortis-backup-${todayISO()}.json`); toast("Backup exportado."); },
+ exportJSON(){ download(new Blob([backupJSON()],{type:"application/json"}),`fortis-backup-${todayISO()}.json`);
+   marcarBackup(); toast("Backup baixado. Guarde o arquivo fora do celular (WhatsApp, e-mail ou Drive)."); render(); },
+ /* abre a folha de compartilhamento do celular com o arquivo; sem suporte, baixa o arquivo */
+ async shareBackup(){ const json=backupJSON(), base=`fortis-backup-${todayISO()}`;
+   // Chrome/Android não compartilha .json; .txt é aceito e o Importar lê os dois
+   const files=[new File([json],base+".json",{type:"application/json"}),new File([json],base+".txt",{type:"text/plain"})];
+   const file=navigator.canShare?files.find(f=>{ try{ return navigator.canShare({files:[f]}); }catch(e){ return false; } }):null;
+   if(file&&navigator.share){
+     try{ await navigator.share({files:[file],title:"Backup FORTIS",text:"Backup dos meus dados do app FORTIS. Guarde este arquivo para restaurar em outro celular."});
+       marcarBackup(); toast("Backup enviado ✓"); render(); return; }
+     catch(e){ if(e&&e.name==="AbortError") return; }   // a pessoa cancelou
+   }
+   App.exportJSON(); },
+ snoozeBackup(){ S.meta.snoozeUntil=new Date(Date.now()+3*864e5).toISOString(); save(); render();
+   toast("Ok! Vamos lembrar de novo em 3 dias. O backup fica em Mais → Backup e dados."); },
  importFile(inp){ const f=inp.files[0]; inp.value=""; if(!f) return;
    if(f.size>5e6){ toast("Arquivo grande demais para ser um backup do FORTIS."); return; }
    const rd=new FileReader();
-   rd.onload=()=>{ let d; try{ d=JSON.parse(rd.result); }catch(e){ toast("Arquivo inválido: não é um JSON."); return; }
+   rd.onload=()=>{ let d; try{ d=JSON.parse(rd.result); }catch(e){ toast("Arquivo inválido: escolha o arquivo fortis-backup."); return; }
      if(!d||typeof d!=="object"||typeof d.profile!=="object"){ toast("Arquivo inválido: não parece um backup do FORTIS."); return; }
      const clean=C.sanitizeState(d,uid);
      const resumo=`${clean.diary.length} registro(s) diário(s), ${clean.treino.length} treino(s), ${clean.plan.length} item(ns) no plano e ${clean.customFoods.length} alimento(s) próprio(s)`;
-     mConfirm(`Substituir TODOS os dados atuais pelo backup?<br><span class="muted small">${esc(resumo)}.</span>`,()=>{ S=clean; S.onboarded=true; save(); ui.view="inicio"; ui.tab="inicio"; render(); toast("Backup importado."); },"Importar"); };
+     mConfirm(`Substituir TODOS os dados atuais pelo backup?<br><span class="muted small">${esc(resumo)}.</span>`,()=>{ S=clean; S.onboarded=true; S.meta.lastBackup=new Date().toISOString(); S.meta.editsSinceBackup=0; if(!S.meta.createdAt) S.meta.createdAt=S.meta.lastBackup; save(); ui.view="inicio"; ui.tab="inicio"; render(); toast("Backup importado."); },"Importar"); };
    rd.onerror=()=>toast("Não foi possível ler o arquivo.");
    rd.readAsText(f); },
  exportCSV(){ const dec=v=>v===""||v==null?"":String(v).replace(".",",");   // Excel pt-BR: “;” separa colunas, “,” é decimal
@@ -618,7 +655,7 @@ window.App={
    diarySorted().forEach(r=>rows.push([r.data,weekOf(r.data)||"",dec(r.peso),dec(r.cintura),dec(r.kcal),dec(r.prot),dec(r.sono),r.treinou,dec(r.aderencia)]));
    const csv=rows.map(r=>r.map(cell).join(";")).join("\r\n");
    download(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}),`fortis-registro-${todayISO()}.csv`); },
- resetAll(){ mConfirm("Apagar TODOS os dados do app? Isso não pode ser desfeito.",()=>{ S=C.defState(); save(); ui.view="inicio"; ui.tab="inicio"; ui.ob={}; ui.obStep=0; render(); window.scrollTo(0,0); },"Apagar tudo"); },
+ resetAll(){ mConfirm("Apagar TODOS os dados do app? Isso não pode ser desfeito.",()=>{ S=C.defState(); S.meta.createdAt=new Date().toISOString(); save(); ui.view="inicio"; ui.tab="inicio"; ui.ob={}; ui.obStep=0; render(); window.scrollTo(0,0); },"Apagar tudo"); },
  /* onboarding */
  obNext(){ obCollect(); const err=obValidate(ui.obStep); if(err){ toast(err); return; }
    if(ui.obStep>=OB_LAST){ obFinish(); return; }
@@ -640,6 +677,7 @@ document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&modal.classList.co
 if("serviceWorker" in navigator && /^https?:$/.test(location.protocol)){
   try{ navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).catch(()=>{}); }catch(e){}
 }
+if(!S.meta.createdAt) S.meta.createdAt=new Date().toISOString();
 save();     // persiste a migração/validação feita na carga
 render();
 })();

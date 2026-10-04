@@ -169,7 +169,8 @@
       v: 2,
       profile: { nome: "", sexo: "", idade: "", peso: "", altura: "", atividade: "", objetivo: "" },
       macros: { protKg: 2, gordKg: 1 }, customFoods: [], plan: [], estr: { 0: [], 1: [], 2: [] },
-      diary: [], treino: [], shop: {}, shopCustom: [], supleUsa: {}, supleCustom: [], onboarded: false
+      diary: [], treino: [], shop: {}, shopCustom: [], supleUsa: {}, supleCustom: [], onboarded: false,
+      meta: { createdAt: null, lastBackup: null, snoozeUntil: null, editsSinceBackup: 0 }
     };
   }
   const str = (v, max) => (v == null ? "" : String(v).slice(0, max || 200));
@@ -255,11 +256,36 @@
       });
     S.supleUsa = usa;
     S.onboarded = !!d.onboarded;
+    const m = isObj(d.meta) ? d.meta : {};
+    const ts = (v) => (typeof v === "string" && !isNaN(Date.parse(v)) ? new Date(v).toISOString() : null);
+    S.meta = { createdAt: ts(m.createdAt), lastBackup: ts(m.lastBackup), snoozeUntil: ts(m.snoozeUntil),
+      editsSinceBackup: Math.max(0, int(m.editsSinceBackup) || 0) };
     return S;
   }
 
+  /* ---------- lembrete de backup ----------
+     Os dados ficam só no aparelho; este é o aviso para a pessoa não perder tudo ao trocar de celular.
+     Retorna {due, reason: "never"|"old"|"many", days, edits}. */
+  const BACKUP_EVERY_DAYS = 14, BACKUP_EVERY_EDITS = 15, FIRST_BACKUP_ENTRIES = 5, FIRST_BACKUP_DAYS = 7;
+  function backupStatus(S, nowMs) {
+    const meta = (S && S.meta) || {};
+    const now = nowMs == null ? Date.now() : nowMs;
+    const days = (iso) => (iso ? Math.floor((now - Date.parse(iso)) / 864e5) : null);
+    const entries = ((S && S.diary) || []).length + ((S && S.treino) || []).length;
+    const hasData = entries > 0 || ((S && S.plan) || []).length > 0;
+    const edits = meta.editsSinceBackup || 0;
+    const out = { due: false, reason: "", days: days(meta.lastBackup), edits };
+    if (!hasData) return out;
+    if (meta.snoozeUntil && Date.parse(meta.snoozeUntil) > now) return out;
+    if (!meta.lastBackup) {
+      if (entries >= FIRST_BACKUP_ENTRIES || (days(meta.createdAt) || 0) >= FIRST_BACKUP_DAYS) { out.due = true; out.reason = "never"; }
+    } else if (out.days >= BACKUP_EVERY_DAYS) { out.due = true; out.reason = "old"; }
+    else if (edits >= BACKUP_EVERY_EDITS) { out.due = true; out.reason = "many"; }
+    return out;
+  }
+
   return {
-    MIN_WEEKS, num, int, isISODate, daysBetween, calcPerfil, calcMacros, foodMap, sumItems, statusOf,
+    backupStatus, MIN_WEEKS, num, int, isISODate, daysBetween, calcPerfil, calcMacros, foodMap, sumItems, statusOf,
     firstDate, weekNumber, leituraDe, progressData, seriesByGroup, groupBadge, defState, sanitizeState
   };
 });

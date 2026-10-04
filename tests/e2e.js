@@ -190,6 +190,29 @@ async function step(name, fn) {
     assert.ok(Array.isArray(s.treino) && Array.isArray(s.plan));
   });
 
+  await step("lembrete de backup aparece, pode ser adiado e some após o backup", async () => {
+    await page.evaluate(() => {
+      const s = JSON.parse(localStorage.getItem("fortis_pwa_v1"));
+      s.diary = Array.from({ length: 6 }, (_, i) => ({ id: "b" + i, data: "2026-09-0" + (i + 1), peso: "70" }));
+      s.meta = { createdAt: new Date().toISOString(), lastBackup: null, snoozeUntil: null, editsSinceBackup: 0 };
+      localStorage.setItem("fortis_pwa_v1", JSON.stringify(s));
+    });
+    await page.reload();
+    assert.match(await viewText(), /Proteja seus dados/);
+    await page.click(".backupcard >> text=Agora não");
+    assert.ok(!(await viewText()).includes("Proteja seus dados"), "adiado some");
+    assert.ok((await state()).meta.snoozeUntil);
+    await page.evaluate(() => App.go("mais"));
+    assert.match(await viewText(), /Nenhum backup ainda/);
+    await page.evaluate(() => App.go("backup"));
+    const [dl] = await Promise.all([page.waitForEvent("download"), page.click("text=Enviar backup")]);
+    assert.match(dl.suggestedFilename(), /^fortis-backup-\d{4}-\d{2}-\d{2}\.json$/);
+    const s = await state();
+    assert.ok(s.meta.lastBackup, "registra a data do backup");
+    assert.equal(s.meta.editsSinceBackup, 0);
+    assert.match(await viewText(), /Último backup: hoje/);
+  });
+
   await step("apagar tudo volta ao onboarding sem recarregar", async () => {
     await page.evaluate(() => App.go("backup"));
     await page.click("text=Apagar todos os dados");

@@ -225,3 +225,6 @@ header{box-shadow:0 5px 24px rgba(0,0,0,.42)}
 nav#tabbar{box-shadow:0 -8px 24px rgba(0,0,0,.34)}
 @media(min-width:600px){#app{max-width:680px}nav#tabbar{max-width:680px}main#view{padding-left:18px;padding-right:18px}.hero img{max-height:330px}}
 @media(prefers-reduced-motion:reduce){.btn-gold,.menurow,.item,.opt{transition:none}.btn-gold:hover,.menurow:hover,.item:hover,.opt:hover{transform:none}}
+/* ---------- v1.4: lembrete de backup ---------- */
+.backupcard{border-color:#8a6a1a; background:linear-gradient(180deg,#241a08,#141414)}
+.backupcard h2{margin-bottom:6px}
