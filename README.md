@@ -1,4 +1,4 @@
-# 🛡️ FORTIS — App PWA (Calorias, Macros e Progresso) — v1.4
+# 🛡️ FORTIS — App PWA (Calorias, Macros e Progresso) — v1.5
 
 Acompanha o ebook + planilha FORTIS. **PWA instalável, 100% offline, dados só no aparelho** (sem conta, sem servidor).
 
@@ -80,6 +80,13 @@ O GitHub Actions (`.github/workflows/ci.yml`) roda os dois a cada push/PR.
 - Semana 1 = data do primeiro registro (equivale ao `$A$2` da planilha). A variação semanal compara com a última semana anterior que tem pesagem (normalizada por semana).
 - Um registro por dia: lançar outro na mesma data pede confirmação e substitui.
 - CSV exportado no padrão do Excel pt-BR (`;` entre colunas, vírgula decimal, UTF-8 com BOM).
+
+## Novidades da v1.5 — medidas caseiras
+- Ao adicionar um alimento ao plano, escolha a **medida**: unidade, colher de sopa, concha, fatia, copo (200 ml), **ml** para líquidos… ou gramas. O app converte para gramas e mostra na hora calorias e macros (ex.: “2 × unidade = 100 g • 155 kcal”).
+- Todos os 65 alimentos do banco têm pelo menos uma medida (`FORTIS.UNITS` em `foods.js`, valores aproximados de tabelas de medidas caseiras). A lista de alimentos mostra “📏 1 unidade ≈ 50 g”.
+- No plano, itens por medida mostram “2 × unidade (100 g)” e o campo altera a **quantidade de medidas** (as gramas são recalculadas).
+- Alimentos próprios podem ter uma medida caseira (nome + gramas).
+- Cálculos continuam em gramas (`q`); a medida fica em `u`/`n` no item do plano. Planos antigos (só gramas) seguem funcionando.
 
 ## Novidades da v1.4 — backup sem esquecer
 - **Lembrete no Início** (“Proteja seus dados”) quando há dados e nenhum backup (5 registros ou 1 semana de uso), quando o último backup tem 14+ dias ou após 15 registros novos. “Agora não” adia por 3 dias. Regra em `backupStatus` (`core.js`), com testes.

@@ -3,7 +3,7 @@
 "use strict";
 const D = window.FORTIS;
 const C = window.FORTIS_CORE;
-const VERSION = "1.4";
+const VERSION = "1.5";
 const $ = (s, r) => (r||document).querySelector(s);
 const $$ = (s, r) => Array.from((r||document).querySelectorAll(s));
 
@@ -42,6 +42,10 @@ function refreshFoodList(){ const dl=$("#dlFoods"); if(!dl) return;
   const sig=names.join("\n"); if(sig===_foodSig) return; _foodSig=sig;
   dl.innerHTML=names.map(n=>`<option value="${esc(n)}">`).join("");
 }
+const measures=(name)=>C.measuresOf(name,foodMap()[name],D.UNITS);
+const fmtN=(n)=>Number(num(n)||0).toLocaleString("pt-BR",{maximumFractionDigits:2});
+/* texto da quantidade de um item: "2 × unidade (100 g)" ou "150 g" */
+const qtyText=(it)=>it.u?`${fmtN(it.n)} × ${esc(it.u)} (${fmtN(it.q)} g)`:`${fmtN(it.q)} g`;
 const isBaseFood=(n)=>D.FOODS.some(f=>f[0].toLowerCase()===n.toLowerCase());
 
 /* ---------- cálculos (espelham a planilha; ver core.js) ---------- */
@@ -253,8 +257,9 @@ function vPlanoDia(){ const t=planTotals(),pf=calcPerfil(),mc=calcMacros();
     if(!idxs.length) return; const s=mealSub(meal);
     h+=`<div class="mealhead"><b>${esc(meal||"Sem refeição")}</b><span>${fi(s.k)} kcal • P ${fi(s.p)}g</span></div>`;
     idxs.forEach(i=>{ const it=S.plan[i],f=m[it.f]; const q=num(it.q)||0;
-      h+=`<div class="item"><div class="grow"><div class="t">${esc(it.f)}</div><div class="s">${f?`${fi(f.k*q/100)} kcal • P ${f1(f.p*q/100)} • C ${f1(f.c*q/100)} • G ${f1(f.f*q/100)}`:'<span class="pill p-warn">Alimento não encontrado no banco</span>'}</div></div>
-      <input id="pq${i}" type="number" inputmode="numeric" min="0" step="1" value="${esc(it.q)}" onchange="App.planQty(${i},this.value)" aria-label="Gramas de ${esc(it.f)}"><span class="muted small" aria-hidden="true">g</span>
+      h+=`<div class="item"><div class="grow"><div class="t">${esc(it.f)}</div><div class="s">${it.u?`<b class="qtxt">${qtyText(it)}</b><br>`:""}${f?`${fi(f.k*q/100)} kcal • P ${f1(f.p*q/100)} • C ${f1(f.c*q/100)} • G ${f1(f.f*q/100)}`:'<span class="pill p-warn">Alimento não encontrado no banco</span>'}</div></div>
+      ${it.u?`<input id="pq${i}" type="number" inputmode="decimal" min="0" step="any" value="${esc(it.n)}" onchange="App.planCount(${i},this.value)" aria-label="Quantidade (${esc(it.u)}) de ${esc(it.f)}"><span class="unit" aria-hidden="true">${esc(it.u)}</span>`
+        :`<input id="pq${i}" type="number" inputmode="numeric" min="0" step="1" value="${esc(it.q)}" onchange="App.planQty(${i},this.value)" aria-label="Gramas de ${esc(it.f)}"><span class="unit" aria-hidden="true">g</span>`}
       <button class="iconbtn danger" onclick="App.planDel(${i})" aria-label="Remover ${esc(it.f)}">🗑</button></div>`; });
   });
   if(!S.plan.length) h+=`<div class="card"><p class="muted">Nenhum item ainda. Toque em <b>＋ Adicionar alimento</b> e monte seu dia.</p></div>`;
@@ -282,7 +287,7 @@ function foodListHTML(){ const q=ui.foodQ.trim().toLowerCase();
   const norm=s=>s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
   const nq=norm(q), list=q?all.filter(f=>norm(f.n).includes(nq)):all;
   let h=""; list.slice(0,150).forEach(f=>{ h+=`<div class="item"><div class="grow"><div class="t">${esc(f.n)} ${f.v==="WARN"?'<span class="pill p-warn">conferir</span>':""} ${f.custom?'<span class="pill p-info">meu</span>':""}</div>
-    <div class="s">${fi(f.k)} kcal • P ${f1(f.p)} • C ${f1(f.c)} • G ${f1(f.f)} • Fib ${f1(f.fib)} • ${esc(f.e)}${f.custom?"":" • "+esc(f.src)}</div></div>
+    <div class="s">${fi(f.k)} kcal • P ${f1(f.p)} • C ${f1(f.c)} • G ${f1(f.f)} • Fib ${f1(f.fib)} • ${esc(f.e)}${f.custom?"":" • "+esc(f.src)}${(()=>{ const u=C.measuresOf(f.n,f,D.UNITS).find(x=>x.label!=="ml"); return u?`<br>📏 1 ${esc(u.label)} ≈ ${fmtN(u.g)} g`:""; })()}</div></div>
     ${f.custom?`<button class="iconbtn" onclick="App.mFood(${f.ix})" aria-label="Editar ${esc(f.n)}">✎</button><button class="iconbtn danger" onclick="App.foodDel(${f.ix})" aria-label="Excluir ${esc(f.n)}">🗑</button>`:""}</div>`; });
   if(!list.length) h=`<div class="card"><p class="muted">Nenhum alimento encontrado. Cadastre o seu!</p></div>`;
   return {html:h,count:`${list.length} de ${all.length} alimentos • Valores aproximados. Confira o rótulo.`};
@@ -433,8 +438,10 @@ function renderOnboarding(){ document.title="FORTIS — Bem-vindo";
 const actions=(ok)=>`<div class="rowbtns"><button type="button" class="btn btn-ghost" onclick="App.close()">Cancelar</button><button class="btn btn-gold" type="submit">${ok}</button></div>`;
 function mPlanItem(){ openSheet(`<h2 id="sheetTitle">Adicionar alimento</h2>
   <form onsubmit="return App.savePlan(event)"><label class="f">Refeição</label><select id="m_m">${D.MEALS8.map(m=>`<option${m===ui.lastMeal?" selected":""}>${esc(m)}</option>`).join("")}</select>
-  <label class="f">Alimento</label><input id="m_f" list="dlFoods" placeholder="Buscar no banco…" autocomplete="off" required>
-  <label class="f">Quantidade (g)</label><input id="m_q" type="number" inputmode="numeric" min="1" max="5000" step="1" placeholder="Ex.: 150" required>
+  <label class="f">Alimento</label><input id="m_f" list="dlFoods" placeholder="Buscar no banco…" autocomplete="off" required oninput="App.mpFood()" onchange="App.mpFood()">
+  <div class="grid2"><div><label class="f">Quantidade</label><input id="m_n" type="number" inputmode="decimal" min="0" step="any" placeholder="Ex.: 2" required oninput="App.mpCalc()"></div>
+  <div><label class="f">Medida</label><select id="m_u" onchange="App.mpCalc()"><option value="">gramas (g)</option></select></div></div>
+  <div id="m_prev" class="prevbox" aria-live="polite">Escolha o alimento para ver as medidas (unidade, colher, copo…).</div>
   ${actions("Adicionar")}</form>`); }
 function mDiary(id){ const r=id?S.diary.find(x=>x.id===id):null;
   const v=k=>r?esc(r[k]||""):"";
@@ -467,6 +474,9 @@ function mFood(ix){ const f=ix!=null?S.customFoods[ix]:null; const v=k=>f?esc(f[
   <div class="grid3"><div><label class="f">Gord</label><input id="f_f" type="number" inputmode="decimal" step="0.1" min="0" max="100" value="${v("f")}"></div>
   <div><label class="f">Fibra</label><input id="f_fib" type="number" inputmode="decimal" step="0.1" min="0" max="100" value="${v("fib")}"></div>
   <div><label class="f">Estado</label><select id="f_e">${["cru","cozido","pronto"].map(e=>`<option${v("e")===e?" selected":""}>${e}</option>`).join("")}</select></div></div>
+  <p class="muted small" style="margin:12px 0 0">📏 <b>Medida caseira (opcional)</b> — para adicionar por unidade, fatia, pote…</p>
+  <div class="grid2"><div><label class="f">Nome da medida</label><input id="f_un" value="${v("un")}" maxlength="40" placeholder="ex.: fatia, pote"></div>
+  <div><label class="f">Gramas por medida</label><input id="f_ug" type="number" inputmode="decimal" step="0.1" min="0" max="2000" value="${v("ug")}" placeholder="ex.: 30"></div></div>
   ${actions("Salvar")}</form>`); }
 function mShopItem(){ openSheet(`<h2 id="sheetTitle">Novo item</h2><form onsubmit="return App.saveShop(event)">
   <label class="f">Categoria</label><select id="s_cat">${D.SHOP_CATS.map(c=>`<option>${esc(c)}</option>`).join("")}</select>
@@ -568,10 +578,30 @@ window.App={
    S.macros={protKg:p!=null&&p>=0?p:S.macros.protKg,gordKg:g!=null&&g>=0?g:S.macros.gordKg}; save(); $("#mcResult").innerHTML=vMacrosResult(); },
  help(k){ const g=GLOSS[k]; if(!g) return; openSheet(`<h2 id="sheetTitle">${g[0]}</h2><p class="small" style="line-height:1.6">${g[1]}</p><div class="rowbtns"><button class="btn btn-gold" onclick="App.close()">Entendi</button></div>`); },
  mPlanItem, mDiary, mTreino, mFood, mShopItem, mSuple,
- savePlan(e){ e.preventDefault(); const m=foodMap(),f=$("#m_f").value.trim(),q=$("#m_q").value;
+ /* modal "Adicionar alimento": ao escolher o alimento, oferece as medidas caseiras dele */
+ mpFood(){ const f=$("#m_f").value.trim(), sel=$("#m_u"); if(!sel) return;
+   if(sel.dataset.food===f) return App.mpCalc(); sel.dataset.food=f;
+   const ms=foodMap()[f]?measures(f):[];
+   sel.innerHTML=ms.map((u,k)=>`<option value="${k}">${esc(u.label)}${u.label==="ml"?"":` (${fmtN(u.g)} g)`}</option>`).join("")+`<option value="">gramas (g)</option>`;
+   sel.value=ms.length?"0":""; App.mpCalc(); },
+ mpCalc(){ const f=$("#m_f").value.trim(), food=foodMap()[f], box=$("#m_prev"), nEl=$("#m_n"); if(!box) return;
+   const k=$("#m_u").value, ms=food?measures(f):[], u=k===""?null:ms[+k];
+   nEl.placeholder=u?(u.label==="ml"?"Ex.: 200":"Ex.: 2"):"Ex.: 150";
+   if(!food){ box.innerHTML=f?"Alimento não encontrado. Digite e escolha um nome da lista.":"Escolha o alimento para ver as medidas (unidade, colher, copo…)."; return; }
+   const n=num(nEl.value); if(!(n>0)){ box.innerHTML=u?`1 ${esc(u.label)} ≈ <b>${fmtN(u.g)} g</b>`:"Informe a quantidade em gramas."; return; }
+   const g=u?C.gramsFor(n,u.g):n;
+   box.innerHTML=`= <b>${fmtN(g)} g</b> • <b>${fi(food.k*g/100)} kcal</b> • P ${f1(food.p*g/100)} g • C ${f1(food.c*g/100)} g • G ${f1(food.f*g/100)} g`; },
+ savePlan(e){ e.preventDefault(); const m=foodMap(),f=$("#m_f").value.trim(),n=num($("#m_n").value),k=$("#m_u").value;
    if(!m[f]){ toast("Escolha um alimento válido do banco (digite e selecione da lista)."); $("#m_f").focus(); return false; }
-   if(!(num(q)>0)){ toast("Informe a quantidade em gramas."); $("#m_q").focus(); return false; }
-   ui.lastMeal=$("#m_m").value; S.plan.push({m:ui.lastMeal,f,q}); save(); closeSheet(); render(); return false; },
+   if(!(n>0)){ toast("Informe a quantidade."); $("#m_n").focus(); return false; }
+   const u=k===""?null:measures(f)[+k];
+   const item=u?{f,q:String(C.gramsFor(n,u.g)),u:u.label,n:String(n)}:{f,q:String(n)};
+   if(num(item.q)>5000){ toast("Quantidade muito grande. Confira o valor."); return false; }
+   ui.lastMeal=$("#m_m").value; S.plan.push({m:ui.lastMeal,...item}); save(); closeSheet(); render(); return false; },
+ /* muda a quantidade de medidas (ex.: 2 → 3 ovos) e recalcula as gramas */
+ planCount(i,v){ const it=S.plan[i]; if(!it||!it.u) return; const n=num(v); if(n==null||n<0) return renderKeepFocus();
+   const u=measures(it.f).find(x=>x.label===it.u), g=u?u.g:(num(it.q)||0)/(num(it.n)||1);
+   it.n=String(n); it.q=String(C.gramsFor(n,g)); save(); renderKeepFocus(); },
  planQty(i,v){ if(!S.plan[i]) return; S.plan[i].q=num(v)!=null&&num(v)>=0?String(num(v)):""; save(); renderKeepFocus(); },
  planDel(i){ mConfirm("Remover este item do plano?",()=>{ S.plan.splice(i,1); save(); render(); }); },
  planClear(){ mConfirm("Remover todos os itens do plano?",()=>{ S.plan=[]; save(); render(); }); },
@@ -580,6 +610,8 @@ window.App={
  foodQ(v){ ui.foodQ=v; const r=foodListHTML(); $("#foodlist").innerHTML=r.html; $("#foodCount").textContent=r.count; },
  saveFood(e,ix){ e.preventDefault(); const g=id=>$(id).value.trim();
    const f={n:g("#f_n").replace(/\s+/g," "),k:num(g("#f_k"))||0,p:num(g("#f_p"))||0,c:num(g("#f_c"))||0,f:num(g("#f_f"))||0,fib:num(g("#f_fib"))||0,e:$("#f_e").value,src:"Meu cadastro",v:"OK"};
+   const un=g("#f_un"), ug=num(g("#f_ug"));
+   if(un&&ug>0){ f.un=un.slice(0,40); f.ug=ug; } else if(un||g("#f_ug")){ toast("Para a medida caseira, preencha o nome e as gramas (ou deixe os dois vazios)."); return false; }
    if(!f.n){ toast("Informe o nome do alimento."); return false; }
    const low=f.n.toLowerCase();
    if(isBaseFood(f.n)){ toast("Já existe um alimento com esse nome no banco. Use outro nome (ex.: “"+f.n+" (marca)”)."); return false; }

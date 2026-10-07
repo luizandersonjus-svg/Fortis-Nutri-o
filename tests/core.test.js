@@ -242,3 +242,30 @@ test("sanitizeState: valida os metadados de backup", () => {
   assert.equal(s.meta.editsSinceBackup, 0);
   assert.deepEqual(C.sanitizeState({}, gen).meta, C.defState().meta);
 });
+
+test("medidas caseiras: todo alimento do banco tem medida e a conversão para gramas", () => {
+  D.FOODS.forEach((f) => assert.ok((D.UNITS[f[0]] || []).length > 0, "sem medida: " + f[0]));
+  Object.keys(D.UNITS).forEach((n) => assert.ok(D.FOODS.some((f) => f[0] === n), "medida para alimento inexistente: " + n));
+  const map = C.foodMap(D.FOODS, [{ n: "Pão caseiro", k: 280, p: 9, c: 50, f: 4, fib: 2, un: "fatia", ug: 40 }]);
+  const plain = (x) => JSON.parse(JSON.stringify(x)); // UNITS vem de outro contexto (vm)
+  assert.deepEqual(plain(C.measuresOf("Ovo cozido", map["Ovo cozido"], D.UNITS)), [{ label: "unidade", g: 50 }]);
+  assert.deepEqual(plain(C.measuresOf("Pão caseiro", map["Pão caseiro"], D.UNITS)), [{ label: "fatia", g: 40 }]);
+  assert.equal(C.gramsFor(2, 50), 100);
+  assert.equal(C.gramsFor("1,5", 13), 19.5);
+  assert.equal(C.gramsFor(200, 1.03), 206);
+  const t = C.sumItems([{ f: "Ovo cozido", q: String(C.gramsFor(2, 50)), u: "unidade", n: "2" }], map);
+  close(t.k, 155);
+});
+
+test("sanitizeState: guarda a medida caseira do plano e do alimento próprio", () => {
+  const s = C.sanitizeState({
+    profile: {},
+    plan: [{ m: "Café", f: "Ovo cozido", q: "100", u: "unidade", n: "2" }, { m: "Café", f: "Ovo cozido", q: "50", u: "unidade", n: "0" }, { f: "Arroz branco cozido", q: "150" }],
+    customFoods: [{ n: "Pão caseiro", k: 280, un: "fatia", ug: "40" }, { n: "Bolo", k: 300, un: "fatia", ug: "" }]
+  }, gen);
+  assert.deepEqual(s.plan[0], { m: "Café", f: "Ovo cozido", q: "100", u: "unidade", n: "2" });
+  assert.equal(s.plan[1].u, undefined, "quantidade inválida volta a ser só gramas");
+  assert.equal(s.plan[2].u, undefined);
+  assert.equal(s.customFoods[0].un, "fatia"); assert.equal(s.customFoods[0].ug, 40);
+  assert.equal(s.customFoods[1].un, undefined);
+});

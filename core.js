@@ -74,6 +74,15 @@
     return m;
   }
   /* soma kcal/macros de itens {f: nome, q: gramas}; filtro opcional */
+  /* medidas caseiras disponíveis para um alimento: [{label, g}] (g = gramas por 1 medida) */
+  function measuresOf(name, food, UNITS) {
+    const list = ((UNITS && UNITS[name]) || []).map((u) => ({ label: u[0], g: u[1] }));
+    if (food && food.custom && food.un && food.ug > 0) list.unshift({ label: food.un, g: food.ug });
+    return list;
+  }
+  /* gramas para N medidas, arredondado a 0,1 g */
+  const gramsFor = (n, g) => Math.round((num(n) || 0) * g * 10) / 10;
+
   function sumItems(items, map, filter) {
     const t = { k: 0, p: 0, c: 0, g: 0, f: 0 };
     (items || []).forEach((it) => {
@@ -207,9 +216,16 @@
       .filter((f) => str(f.n).trim())
       .map((f) => ({
         n: str(f.n, 120).trim(), k: num(f.k) || 0, p: num(f.p) || 0, c: num(f.c) || 0, f: num(f.f) || 0,
-        fib: num(f.fib) || 0, e: oneOf(f.e, ["cru", "cozido", "pronto"]) || "pronto", src: "Meu cadastro", v: "OK"
+        fib: num(f.fib) || 0, e: oneOf(f.e, ["cru", "cozido", "pronto"]) || "pronto", src: "Meu cadastro", v: "OK",
+        // medida caseira opcional do alimento próprio (ex.: "fatia" = 30 g)
+        ...(str(f.un).trim() && num(f.ug) > 0 ? { un: str(f.un, 40).trim(), ug: num(f.ug) } : {})
       }));
-    S.plan = arr(d.plan).filter((it) => str(it.f).trim()).map((it) => ({ m: str(it.m, 60), f: str(it.f, 120), q: numStr(it.q) }));
+    // q = gramas (sempre, é o que entra nos cálculos); u/n = medida caseira e quantidade de medidas, quando usadas
+    S.plan = arr(d.plan).filter((it) => str(it.f).trim()).map((it) => {
+      const item = { m: str(it.m, 60), f: str(it.f, 120), q: numStr(it.q) };
+      if (str(it.u).trim() && num(it.n) > 0) { item.u = str(it.u, 40).trim(); item.n = numStr(it.n); }
+      return item;
+    });
     if (isObj(d.estr)) {
       [0, 1, 2].forEach((i) => {
         S.estr[i] = arr(d.estr[i]).map((x) => ({ f: str(x.f, 120), q: numStr(x.q) }));
@@ -285,7 +301,7 @@
   }
 
   return {
-    backupStatus, MIN_WEEKS, num, int, isISODate, daysBetween, calcPerfil, calcMacros, foodMap, sumItems, statusOf,
+    backupStatus, measuresOf, gramsFor, MIN_WEEKS, num, int, isISODate, daysBetween, calcPerfil, calcMacros, foodMap, sumItems, statusOf,
     firstDate, weekNumber, leituraDe, progressData, seriesByGroup, groupBadge, defState, sanitizeState
   };
 });

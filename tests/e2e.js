@@ -159,7 +159,9 @@ async function step(name, fn) {
     await page.evaluate(() => App.segPlano("plano"));
     await page.click("text=＋ Adicionar alimento");
     await page.fill("#m_f", "Shake caseiro");
-    await page.fill("#m_q", "200");
+    await page.dispatchEvent("#m_f", "change");
+    assert.equal(await page.inputValue("#m_u"), "", "alimento sem medida caseira usa gramas");
+    await page.fill("#m_n", "200");
     await page.click("#sheet button[type=submit]");
     await page.evaluate(() => App.mFood(0));
     await page.fill("#f_n", "Shake da Ana");
@@ -167,6 +169,36 @@ async function step(name, fn) {
     const s = await state();
     assert.equal(s.plan[0].f, "Shake da Ana");
     assert.ok(!(await viewText()).includes("não encontrado"));
+  });
+
+  await step("adicionar por medida caseira (2 ovos) calcula as gramas e permite mudar a quantidade", async () => {
+    await page.evaluate(() => { App.go("plano"); App.segPlano("plano"); });
+    await page.click("text=＋ Adicionar alimento");
+    await page.fill("#m_f", "Ovo cozido");
+    await page.dispatchEvent("#m_f", "change");
+    assert.equal(await page.$eval("#m_u option:checked", (o) => o.textContent), "unidade (50 g)");
+    await page.fill("#m_n", "2");
+    assert.match(await page.textContent("#m_prev"), /100 g.*155 kcal/);
+    await page.click("#sheet button[type=submit]");
+    let s = await state(); const it = s.plan[s.plan.length - 1];
+    assert.deepEqual([it.f, it.q, it.u, it.n], ["Ovo cozido", "100", "unidade", "2"]);
+    assert.match(await viewText(), /2 × unidade \(100 g\)/);
+    const id = "#pq" + (s.plan.length - 1);
+    await page.fill(id, "3"); await page.dispatchEvent(id, "change"); await page.waitForTimeout(50);
+    s = await state(); assert.equal(s.plan[s.plan.length - 1].q, "150");
+    // leite em ml
+    await page.click("text=＋ Adicionar alimento");
+    await page.fill("#m_f", "Leite integral"); await page.dispatchEvent("#m_f", "change");
+    await page.selectOption("#m_u", { label: "ml" }); await page.fill("#m_n", "300");
+    await page.click("#sheet button[type=submit]");
+    s = await state(); assert.equal(s.plan[s.plan.length - 1].q, "309");
+    // ainda dá para usar gramas
+    await page.click("text=＋ Adicionar alimento");
+    await page.fill("#m_f", "Arroz branco cozido"); await page.dispatchEvent("#m_f", "change");
+    await page.selectOption("#m_u", ""); await page.fill("#m_n", "150");
+    await page.click("#sheet button[type=submit]");
+    s = await state(); const last = s.plan[s.plan.length - 1];
+    assert.equal(last.q, "150"); assert.equal(last.u, undefined);
   });
 
   await step("importar backup malicioso não executa código e não quebra o app", async () => {
