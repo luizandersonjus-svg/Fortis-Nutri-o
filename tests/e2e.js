@@ -159,7 +159,9 @@ async function step(name, fn) {
     await page.evaluate(() => App.segPlano("plano"));
     await page.click("text=＋ Adicionar alimento");
     await page.fill("#m_f", "Shake caseiro");
-    await page.fill("#m_q", "200");
+    await page.dispatchEvent("#m_f", "change");
+    assert.equal(await page.inputValue("#m_u"), "", "alimento sem medida caseira usa gramas");
+    await page.fill("#m_n", "200");
     await page.click("#sheet button[type=submit]");
     await page.evaluate(() => App.mFood(0));
     await page.fill("#f_n", "Shake da Ana");
@@ -167,6 +169,36 @@ async function step(name, fn) {
     const s = await state();
     assert.equal(s.plan[0].f, "Shake da Ana");
     assert.ok(!(await viewText()).includes("não encontrado"));
+  });
+
+  await step("adicionar por medida caseira (2 ovos) calcula as gramas e permite mudar a quantidade", async () => {
+    await page.evaluate(() => { App.go("plano"); App.segPlano("plano"); });
+    await page.click("text=＋ Adicionar alimento");
+    await page.fill("#m_f", "Ovo cozido");
+    await page.dispatchEvent("#m_f", "change");
+    assert.equal(await page.$eval("#m_u option:checked", (o) => o.textContent), "unidade (50 g)");
+    await page.fill("#m_n", "2");
+    assert.match(await page.textContent("#m_prev"), /100 g.*155 kcal/);
+    await page.click("#sheet button[type=submit]");
+    let s = await state(); const it = s.plan[s.plan.length - 1];
+    assert.deepEqual([it.f, it.q, it.u, it.n], ["Ovo cozido", "100", "unidade", "2"]);
+    assert.match(await viewText(), /2 × unidade \(100 g\)/);
+    const id = "#pq" + (s.plan.length - 1);
+    await page.fill(id, "3"); await page.dispatchEvent(id, "change"); await page.waitForTimeout(50);
+    s = await state(); assert.equal(s.plan[s.plan.length - 1].q, "150");
+    // leite em ml
+    await page.click("text=＋ Adicionar alimento");
+    await page.fill("#m_f", "Leite integral"); await page.dispatchEvent("#m_f", "change");
+    await page.selectOption("#m_u", { label: "ml" }); await page.fill("#m_n", "300");
+    await page.click("#sheet button[type=submit]");
+    s = await state(); assert.equal(s.plan[s.plan.length - 1].q, "309");
+    // ainda dá para usar gramas
+    await page.click("text=＋ Adicionar alimento");
+    await page.fill("#m_f", "Arroz branco cozido"); await page.dispatchEvent("#m_f", "change");
+    await page.selectOption("#m_u", ""); await page.fill("#m_n", "150");
+    await page.click("#sheet button[type=submit]");
+    s = await state(); const last = s.plan[s.plan.length - 1];
+    assert.equal(last.q, "150"); assert.equal(last.u, undefined);
   });
 
   await step("importar backup malicioso não executa código e não quebra o app", async () => {
@@ -188,6 +220,29 @@ async function step(name, fn) {
     const s = await state();
     assert.equal(s.diary.length, 1);
     assert.ok(Array.isArray(s.treino) && Array.isArray(s.plan));
+  });
+
+  await step("lembrete de backup aparece, pode ser adiado e some após o backup", async () => {
+    await page.evaluate(() => {
+      const s = JSON.parse(localStorage.getItem("fortis_pwa_v1"));
+      s.diary = Array.from({ length: 6 }, (_, i) => ({ id: "b" + i, data: "2026-09-0" + (i + 1), peso: "70" }));
+      s.meta = { createdAt: new Date().toISOString(), lastBackup: null, snoozeUntil: null, editsSinceBackup: 0 };
+      localStorage.setItem("fortis_pwa_v1", JSON.stringify(s));
+    });
+    await page.reload();
+    assert.match(await viewText(), /Proteja seus dados/);
+    await page.click(".backupcard >> text=Agora não");
+    assert.ok(!(await viewText()).includes("Proteja seus dados"), "adiado some");
+    assert.ok((await state()).meta.snoozeUntil);
+    await page.evaluate(() => App.go("mais"));
+    assert.match(await viewText(), /Nenhum backup ainda/);
+    await page.evaluate(() => App.go("backup"));
+    const [dl] = await Promise.all([page.waitForEvent("download"), page.click("text=Enviar backup")]);
+    assert.match(dl.suggestedFilename(), /^fortis-backup-\d{4}-\d{2}-\d{2}\.json$/);
+    const s = await state();
+    assert.ok(s.meta.lastBackup, "registra a data do backup");
+    assert.equal(s.meta.editsSinceBackup, 0);
+    assert.match(await viewText(), /Último backup: hoje/);
   });
 
   await step("apagar tudo volta ao onboarding sem recarregar", async () => {

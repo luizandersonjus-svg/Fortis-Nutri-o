@@ -3,7 +3,7 @@
 "use strict";
 const D = window.FORTIS;
 const C = window.FORTIS_CORE;
-const VERSION = "1.3.1";
+const VERSION = "1.5";
 const $ = (s, r) => (r||document).querySelector(s);
 const $$ = (s, r) => Array.from((r||document).querySelectorAll(s));
 
@@ -42,6 +42,10 @@ function refreshFoodList(){ const dl=$("#dlFoods"); if(!dl) return;
   const sig=names.join("\n"); if(sig===_foodSig) return; _foodSig=sig;
   dl.innerHTML=names.map(n=>`<option value="${esc(n)}">`).join("");
 }
+const measures=(name)=>C.measuresOf(name,foodMap()[name],D.UNITS);
+const fmtN=(n)=>Number(num(n)||0).toLocaleString("pt-BR",{maximumFractionDigits:2});
+/* texto da quantidade de um item: "2 × unidade (100 g)" ou "150 g" */
+const qtyText=(it)=>it.u?`${fmtN(it.n)} × ${esc(it.u)} (${fmtN(it.q)} g)`:`${fmtN(it.q)} g`;
 const isBaseFood=(n)=>D.FOODS.some(f=>f[0].toLowerCase()===n.toLowerCase());
 
 /* ---------- cálculos (espelham a planilha; ver core.js) ---------- */
@@ -140,6 +144,19 @@ function kcalExplica(pf){ if(!pf) return "";
   return extra>1?`Seu corpo gasta cerca de <b>${fi(pf.get)} kcal</b> por dia. Comendo <b>${fi(extra)} kcal a mais</b>, ele tem energia extra para construir músculo.`
     :`Seu corpo gasta cerca de <b>${fi(pf.get)} kcal</b> por dia. Comendo isso, seu peso tende a se manter.`; }
 
+/* ---------- backup: lembrete, envio em 1 toque e armazenamento persistente ---------- */
+const backupJSON=()=>JSON.stringify({...S,app:"FORTIS",exportadoEm:new Date().toISOString(),versaoApp:VERSION},null,1);
+const quandoFoi=(dias)=>dias==null?"":dias<=0?"hoje":dias===1?"ontem":`há ${dias} dias`;
+function pedirPersistencia(){ try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persisted().then(p=>{ if(!p) navigator.storage.persist(); }).catch(()=>{}); }catch(e){} }
+function marcarBackup(){ S.meta.lastBackup=new Date().toISOString(); S.meta.editsSinceBackup=0; S.meta.snoozeUntil=null; save(); pedirPersistencia(); }
+const contarEdicao=()=>{ S.meta.editsSinceBackup=(S.meta.editsSinceBackup||0)+1; };
+function avisoBackup(){ const b=C.backupStatus(S); if(!b.due) return "";
+  const msg=b.reason==="never"?"Seus dados ficam <b>só neste celular</b>. Se você trocar, perder ou formatar o aparelho sem backup, perde todo o histórico. Leva 30 segundos."
+    :b.reason==="old"?`Seu último backup foi <b>${quandoFoi(b.days)}</b>. Faça um novo para guardar seus registros recentes.`
+    :`Você fez <b>${b.edits} registros</b> desde o último backup. Faça um novo para não perdê-los.`;
+  return `<div class="card backupcard" role="region" aria-label="Lembrete de backup"><h2>💾 Proteja seus dados</h2><p class="small" style="margin:0">${msg}</p>
+   <div class="rowbtns"><button class="btn btn-ghost btn-sm" onclick="App.snoozeBackup()">Agora não</button><button class="btn btn-gold btn-sm" onclick="App.shareBackup()">Fazer backup</button></div></div>`; }
+
 /* ================= VIEWS ================= */
 function proximosPassos(){ const hoje=todayISO();
   const passos=[
@@ -170,6 +187,7 @@ function vInicio(){ const pf=calcPerfil(),mc=calcMacros();
     h+=`<div class="rowbtns" style="margin-top:12px"><button class="btn btn-gold" onclick="App.mDiary()">Registrar hoje</button></div>`;
   }
   h+=`</div>`;
+  h+=avisoBackup();
   h+=proximosPassos();
   h+=`<div class="card"><h2>Atalhos</h2>${menuRow("perfil","Perfil e metas","Seus dados e quanto comer por dia","👤")}${menuRow("macros","Proteína, carbo e gordura","Quantos gramas de cada por dia","🥩")}</div>`;
   const segRow=(seg,label,sub,ic)=>`<button class="menurow" onclick="App.goSeg('plano','${seg}')"><span class="ic" aria-hidden="true">${ic}</span><span style="flex:1">${label}<small>${sub}</small></span><span class="chev" aria-hidden="true">›</span></button>`;
@@ -239,8 +257,9 @@ function vPlanoDia(){ const t=planTotals(),pf=calcPerfil(),mc=calcMacros();
     if(!idxs.length) return; const s=mealSub(meal);
     h+=`<div class="mealhead"><b>${esc(meal||"Sem refeição")}</b><span>${fi(s.k)} kcal • P ${fi(s.p)}g</span></div>`;
     idxs.forEach(i=>{ const it=S.plan[i],f=m[it.f]; const q=num(it.q)||0;
-      h+=`<div class="item"><div class="grow"><div class="t">${esc(it.f)}</div><div class="s">${f?`${fi(f.k*q/100)} kcal • P ${f1(f.p*q/100)} • C ${f1(f.c*q/100)} • G ${f1(f.f*q/100)}`:'<span class="pill p-warn">Alimento não encontrado no banco</span>'}</div></div>
-      <input id="pq${i}" type="number" inputmode="numeric" min="0" step="1" value="${esc(it.q)}" onchange="App.planQty(${i},this.value)" aria-label="Gramas de ${esc(it.f)}"><span class="muted small" aria-hidden="true">g</span>
+      h+=`<div class="item"><div class="grow"><div class="t">${esc(it.f)}</div><div class="s">${it.u?`<b class="qtxt">${qtyText(it)}</b><br>`:""}${f?`${fi(f.k*q/100)} kcal • P ${f1(f.p*q/100)} • C ${f1(f.c*q/100)} • G ${f1(f.f*q/100)}`:'<span class="pill p-warn">Alimento não encontrado no banco</span>'}</div></div>
+      ${it.u?`<input id="pq${i}" type="number" inputmode="decimal" min="0" step="any" value="${esc(it.n)}" onchange="App.planCount(${i},this.value)" aria-label="Quantidade (${esc(it.u)}) de ${esc(it.f)}"><span class="unit" aria-hidden="true">${esc(it.u)}</span>`
+        :`<input id="pq${i}" type="number" inputmode="numeric" min="0" step="1" value="${esc(it.q)}" onchange="App.planQty(${i},this.value)" aria-label="Gramas de ${esc(it.f)}"><span class="unit" aria-hidden="true">g</span>`}
       <button class="iconbtn danger" onclick="App.planDel(${i})" aria-label="Remover ${esc(it.f)}">🗑</button></div>`; });
   });
   if(!S.plan.length) h+=`<div class="card"><p class="muted">Nenhum item ainda. Toque em <b>＋ Adicionar alimento</b> e monte seu dia.</p></div>`;
@@ -268,7 +287,7 @@ function foodListHTML(){ const q=ui.foodQ.trim().toLowerCase();
   const norm=s=>s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
   const nq=norm(q), list=q?all.filter(f=>norm(f.n).includes(nq)):all;
   let h=""; list.slice(0,150).forEach(f=>{ h+=`<div class="item"><div class="grow"><div class="t">${esc(f.n)} ${f.v==="WARN"?'<span class="pill p-warn">conferir</span>':""} ${f.custom?'<span class="pill p-info">meu</span>':""}</div>
-    <div class="s">${fi(f.k)} kcal • P ${f1(f.p)} • C ${f1(f.c)} • G ${f1(f.f)} • Fib ${f1(f.fib)} • ${esc(f.e)}${f.custom?"":" • "+esc(f.src)}</div></div>
+    <div class="s">${fi(f.k)} kcal • P ${f1(f.p)} • C ${f1(f.c)} • G ${f1(f.f)} • Fib ${f1(f.fib)} • ${esc(f.e)}${f.custom?"":" • "+esc(f.src)}${(()=>{ const u=C.measuresOf(f.n,f,D.UNITS).find(x=>x.label!=="ml"); return u?`<br>📏 1 ${esc(u.label)} ≈ ${fmtN(u.g)} g`:""; })()}</div></div>
     ${f.custom?`<button class="iconbtn" onclick="App.mFood(${f.ix})" aria-label="Editar ${esc(f.n)}">✎</button><button class="iconbtn danger" onclick="App.foodDel(${f.ix})" aria-label="Excluir ${esc(f.n)}">🗑</button>`:""}</div>`; });
   if(!list.length) h=`<div class="card"><p class="muted">Nenhum alimento encontrado. Cadastre o seu!</p></div>`;
   return {html:h,count:`${list.length} de ${all.length} alimentos • Valores aproximados. Confira o rótulo.`};
@@ -331,7 +350,7 @@ function vProgresso(){ const pd=C.progressData(S.diary); const withN=pd.filter(w
 
 /* ----- mais ----- */
 function vMais(){
-  return `<div class="card"><h2>Ajustes e conteúdo</h2>${menuRow("perfil","Perfil e metas","Seus dados e calorias-alvo","👤")}${menuRow("macros","Macronutrientes","Metas de proteína, gordura e carbos","🥩")}${menuRow("compras","Lista de compras","Mercado e organização","🛒")}${menuRow("suple","Suplementação","Referências educacionais","💊")}${menuRow("sobre","Sobre o método","Como usar + avisos","🛡️")}${menuRow("backup","Backup e dados","Exportar, importar, apagar","💾")}</div>
+  return `<div class="card"><h2>Ajustes e conteúdo</h2>${menuRow("perfil","Perfil e metas","Seus dados e calorias-alvo","👤")}${menuRow("macros","Macronutrientes","Metas de proteína, gordura e carbos","🥩")}${menuRow("compras","Lista de compras","Mercado e organização","🛒")}${menuRow("suple","Suplementação","Referências educacionais","💊")}${menuRow("sobre","Sobre o método","Como usar + avisos","🛡️")}${menuRow("backup","Backup e dados",S.meta.lastBackup?`Último backup: ${quandoFoi(C.backupStatus(S).days)}`:"⚠ Nenhum backup ainda","💾")}</div>
   <div class="card"><h2>Instalar o app</h2><p class="small muted">No Android (Chrome): menu ⋮ → <b>Instalar app / Adicionar à tela inicial</b>. No iPhone: <b>Compartilhar → Adicionar à Tela de Início</b>. Depois funciona offline.</p><div class="rowbtns"><button class="btn btn-ghost btn-sm" id="btnInstall" style="display:none" onclick="App.install()">📲 Instalar agora</button><a class="btn btn-ghost btn-sm" href="instalar.html">🔗 Página de instalação (QR)</a></div></div>
   <footer class="appfoot"><b>FORTIS</b> v${VERSION} • Disciplina, constância e fortaleza</footer>`;
 }
@@ -377,11 +396,21 @@ function vSobre(){ return `<div class="hero"><img src="https://hebbkx1anhila5yf.
   <div class="warnbox">Esta ferramenta tem finalidade educacional e <b>não substitui</b> avaliação individual com nutricionista, médico ou outro profissional habilitado. Os resultados são estimativas. Pessoas com doenças, uso contínuo de medicamentos, gestantes, lactantes, menores de idade ou com histórico de transtornos alimentares devem buscar orientação profissional.</div>
   <footer class="appfoot"><b>FORTIS</b> • Nutrição, saúde e suplementação<br>Disciplina, constância e fortaleza</footer>`;
 }
-function vBackup(){ return `<div class="card"><h2>Seus dados</h2><p class="small muted">Tudo fica salvo <b>só neste aparelho</b> (privado, sem conta). Exporte um backup para não perder nada — limpar os dados do navegador apaga o app.</p>
-  <button class="btn btn-gold" onclick="App.exportJSON()">⬇ Exportar backup (JSON)</button>
+function vBackup(){ const b=C.backupStatus(S);
+  const status=S.meta.lastBackup?`<span class="pill ${b.due?"p-warn":"p-ok"}">${b.due?"⚠":"✓"} Último backup: ${quandoFoi(b.days)}</span>`
+    :`<span class="pill p-warn">⚠ Você ainda não fez nenhum backup</span>`;
+  return `<div class="card gold"><h2>💾 Backup dos seus dados</h2>${status}
+  <p class="small" style="margin:10px 0">Tudo fica salvo <b>só neste celular</b> (privado, sem conta). O backup é um arquivo com todos os seus dados — guarde-o no WhatsApp, e-mail ou Drive.</p>
+  <button class="btn btn-gold" onclick="App.shareBackup()">📤 Enviar backup (WhatsApp, e-mail, Drive)</button>
+  <button class="btn btn-ghost" onclick="App.exportJSON()">⬇ Baixar arquivo de backup</button></div>
+  <div class="card"><h2>📱 Trocou de celular?</h2>
+  <div class="checkrow"><b>1</b><span>No celular <b>antigo</b>: toque em <b>Enviar backup</b> e mande o arquivo para você mesmo.</span></div>
+  <div class="checkrow"><b>2</b><span>No celular <b>novo</b>: instale o FORTIS, toque em <b>“Só quero explorar o app”</b> e venha até esta tela.</span></div>
+  <div class="checkrow"><b>3</b><span>Toque em <b>Importar backup</b> e escolha o arquivo. Pronto: tudo volta como estava.</span></div>
   <button class="btn btn-ghost" onclick="document.getElementById('impFile').click()">⬆ Importar backup</button>
-  <input type="file" id="impFile" accept=".json,application/json" style="display:none" onchange="App.importFile(this)">
-  <button class="btn btn-ghost" onclick="App.exportCSV()">📄 Exportar registro (CSV)</button>
+  <input type="file" id="impFile" accept=".json,.txt,application/json,text/plain" style="display:none" onchange="App.importFile(this)"></div>
+  <div class="card"><h2>Outras opções</h2>
+  <button class="btn btn-ghost" onclick="App.exportCSV()">📄 Exportar registro diário (planilha CSV)</button>
   <button class="btn btn-danger" onclick="App.resetAll()">🗑 Apagar todos os dados</button></div>
   <div class="card"><h2>Sobre</h2><p class="small muted">FORTIS PWA v${VERSION} • Funciona offline após a primeira abertura • Português (Brasil)</p></div>`;
 }
@@ -409,8 +438,10 @@ function renderOnboarding(){ document.title="FORTIS — Bem-vindo";
 const actions=(ok)=>`<div class="rowbtns"><button type="button" class="btn btn-ghost" onclick="App.close()">Cancelar</button><button class="btn btn-gold" type="submit">${ok}</button></div>`;
 function mPlanItem(){ openSheet(`<h2 id="sheetTitle">Adicionar alimento</h2>
   <form onsubmit="return App.savePlan(event)"><label class="f">Refeição</label><select id="m_m">${D.MEALS8.map(m=>`<option${m===ui.lastMeal?" selected":""}>${esc(m)}</option>`).join("")}</select>
-  <label class="f">Alimento</label><input id="m_f" list="dlFoods" placeholder="Buscar no banco…" autocomplete="off" required>
-  <label class="f">Quantidade (g)</label><input id="m_q" type="number" inputmode="numeric" min="1" max="5000" step="1" placeholder="Ex.: 150" required>
+  <label class="f">Alimento</label><input id="m_f" list="dlFoods" placeholder="Buscar no banco…" autocomplete="off" required oninput="App.mpFood()" onchange="App.mpFood()">
+  <div class="grid2"><div><label class="f">Quantidade</label><input id="m_n" type="number" inputmode="decimal" min="0" step="any" placeholder="Ex.: 2" required oninput="App.mpCalc()"></div>
+  <div><label class="f">Medida</label><select id="m_u" onchange="App.mpCalc()"><option value="">gramas (g)</option></select></div></div>
+  <div id="m_prev" class="prevbox" aria-live="polite">Escolha o alimento para ver as medidas (unidade, colher, copo…).</div>
   ${actions("Adicionar")}</form>`); }
 function mDiary(id){ const r=id?S.diary.find(x=>x.id===id):null;
   const v=k=>r?esc(r[k]||""):"";
@@ -443,6 +474,9 @@ function mFood(ix){ const f=ix!=null?S.customFoods[ix]:null; const v=k=>f?esc(f[
   <div class="grid3"><div><label class="f">Gord</label><input id="f_f" type="number" inputmode="decimal" step="0.1" min="0" max="100" value="${v("f")}"></div>
   <div><label class="f">Fibra</label><input id="f_fib" type="number" inputmode="decimal" step="0.1" min="0" max="100" value="${v("fib")}"></div>
   <div><label class="f">Estado</label><select id="f_e">${["cru","cozido","pronto"].map(e=>`<option${v("e")===e?" selected":""}>${e}</option>`).join("")}</select></div></div>
+  <p class="muted small" style="margin:12px 0 0">📏 <b>Medida caseira (opcional)</b> — para adicionar por unidade, fatia, pote…</p>
+  <div class="grid2"><div><label class="f">Nome da medida</label><input id="f_un" value="${v("un")}" maxlength="40" placeholder="ex.: fatia, pote"></div>
+  <div><label class="f">Gramas por medida</label><input id="f_ug" type="number" inputmode="decimal" step="0.1" min="0" max="2000" value="${v("ug")}" placeholder="ex.: 30"></div></div>
   ${actions("Salvar")}</form>`); }
 function mShopItem(){ openSheet(`<h2 id="sheetTitle">Novo item</h2><form onsubmit="return App.saveShop(event)">
   <label class="f">Categoria</label><select id="s_cat">${D.SHOP_CATS.map(c=>`<option>${esc(c)}</option>`).join("")}</select>
@@ -472,7 +506,7 @@ function vOnboarding(){ const s=ui.obStep, ob=ui.ob;
     </ul>
     <button class="btn btn-gold" onclick="App.obNext()">Começar</button>
     <button class="linkbtn" onclick="App.obSkip()">Só quero explorar o app</button>
-    <p class="wpriv">🔒 Sem cadastro e sem internet: seus dados ficam só no seu celular.</p></div>`;
+    <p class="wpriv">🔒 Sem cadastro e sem internet: seus dados ficam só no seu celular.<br>💾 Trocou de aparelho? Leve tudo pelo backup, em <b>Mais → Backup e dados</b>.</p></div>`;
   if(s===1) return `<div class="card">${head("Sobre você","Usamos esses dados para estimar quanto seu corpo gasta por dia.")}
    <label class="f">Como podemos te chamar?</label><input id="ob_nome" value="${esc(ob.nome||"")}" placeholder="Seu nome (opcional)" autocomplete="given-name" maxlength="80">
    <div class="f">Sexo</div>${optCards("Sexo",sexItems(),ob.sexo||"","App.obPick_sexo").replace('class="opts"','class="opts two"')}
@@ -544,10 +578,30 @@ window.App={
    S.macros={protKg:p!=null&&p>=0?p:S.macros.protKg,gordKg:g!=null&&g>=0?g:S.macros.gordKg}; save(); $("#mcResult").innerHTML=vMacrosResult(); },
  help(k){ const g=GLOSS[k]; if(!g) return; openSheet(`<h2 id="sheetTitle">${g[0]}</h2><p class="small" style="line-height:1.6">${g[1]}</p><div class="rowbtns"><button class="btn btn-gold" onclick="App.close()">Entendi</button></div>`); },
  mPlanItem, mDiary, mTreino, mFood, mShopItem, mSuple,
- savePlan(e){ e.preventDefault(); const m=foodMap(),f=$("#m_f").value.trim(),q=$("#m_q").value;
+ /* modal "Adicionar alimento": ao escolher o alimento, oferece as medidas caseiras dele */
+ mpFood(){ const f=$("#m_f").value.trim(), sel=$("#m_u"); if(!sel) return;
+   if(sel.dataset.food===f) return App.mpCalc(); sel.dataset.food=f;
+   const ms=foodMap()[f]?measures(f):[];
+   sel.innerHTML=ms.map((u,k)=>`<option value="${k}">${esc(u.label)}${u.label==="ml"?"":` (${fmtN(u.g)} g)`}</option>`).join("")+`<option value="">gramas (g)</option>`;
+   sel.value=ms.length?"0":""; App.mpCalc(); },
+ mpCalc(){ const f=$("#m_f").value.trim(), food=foodMap()[f], box=$("#m_prev"), nEl=$("#m_n"); if(!box) return;
+   const k=$("#m_u").value, ms=food?measures(f):[], u=k===""?null:ms[+k];
+   nEl.placeholder=u?(u.label==="ml"?"Ex.: 200":"Ex.: 2"):"Ex.: 150";
+   if(!food){ box.innerHTML=f?"Alimento não encontrado. Digite e escolha um nome da lista.":"Escolha o alimento para ver as medidas (unidade, colher, copo…)."; return; }
+   const n=num(nEl.value); if(!(n>0)){ box.innerHTML=u?`1 ${esc(u.label)} ≈ <b>${fmtN(u.g)} g</b>`:"Informe a quantidade em gramas."; return; }
+   const g=u?C.gramsFor(n,u.g):n;
+   box.innerHTML=`= <b>${fmtN(g)} g</b> • <b>${fi(food.k*g/100)} kcal</b> • P ${f1(food.p*g/100)} g • C ${f1(food.c*g/100)} g • G ${f1(food.f*g/100)} g`; },
+ savePlan(e){ e.preventDefault(); const m=foodMap(),f=$("#m_f").value.trim(),n=num($("#m_n").value),k=$("#m_u").value;
    if(!m[f]){ toast("Escolha um alimento válido do banco (digite e selecione da lista)."); $("#m_f").focus(); return false; }
-   if(!(num(q)>0)){ toast("Informe a quantidade em gramas."); $("#m_q").focus(); return false; }
-   ui.lastMeal=$("#m_m").value; S.plan.push({m:ui.lastMeal,f,q}); save(); closeSheet(); render(); return false; },
+   if(!(n>0)){ toast("Informe a quantidade."); $("#m_n").focus(); return false; }
+   const u=k===""?null:measures(f)[+k];
+   const item=u?{f,q:String(C.gramsFor(n,u.g)),u:u.label,n:String(n)}:{f,q:String(n)};
+   if(num(item.q)>5000){ toast("Quantidade muito grande. Confira o valor."); return false; }
+   ui.lastMeal=$("#m_m").value; S.plan.push({m:ui.lastMeal,...item}); save(); closeSheet(); render(); return false; },
+ /* muda a quantidade de medidas (ex.: 2 → 3 ovos) e recalcula as gramas */
+ planCount(i,v){ const it=S.plan[i]; if(!it||!it.u) return; const n=num(v); if(n==null||n<0) return renderKeepFocus();
+   const u=measures(it.f).find(x=>x.label===it.u), g=u?u.g:(num(it.q)||0)/(num(it.n)||1);
+   it.n=String(n); it.q=String(C.gramsFor(n,g)); save(); renderKeepFocus(); },
  planQty(i,v){ if(!S.plan[i]) return; S.plan[i].q=num(v)!=null&&num(v)>=0?String(num(v)):""; save(); renderKeepFocus(); },
  planDel(i){ mConfirm("Remover este item do plano?",()=>{ S.plan.splice(i,1); save(); render(); }); },
  planClear(){ mConfirm("Remover todos os itens do plano?",()=>{ S.plan=[]; save(); render(); }); },
@@ -556,6 +610,8 @@ window.App={
  foodQ(v){ ui.foodQ=v; const r=foodListHTML(); $("#foodlist").innerHTML=r.html; $("#foodCount").textContent=r.count; },
  saveFood(e,ix){ e.preventDefault(); const g=id=>$(id).value.trim();
    const f={n:g("#f_n").replace(/\s+/g," "),k:num(g("#f_k"))||0,p:num(g("#f_p"))||0,c:num(g("#f_c"))||0,f:num(g("#f_f"))||0,fib:num(g("#f_fib"))||0,e:$("#f_e").value,src:"Meu cadastro",v:"OK"};
+   const un=g("#f_un"), ug=num(g("#f_ug"));
+   if(un&&ug>0){ f.un=un.slice(0,40); f.ug=ug; } else if(un||g("#f_ug")){ toast("Para a medida caseira, preencha o nome e as gramas (ou deixe os dois vazios)."); return false; }
    if(!f.n){ toast("Informe o nome do alimento."); return false; }
    const low=f.n.toLowerCase();
    if(isBaseFood(f.n)){ toast("Já existe um alimento com esse nome no banco. Use outro nome (ex.: “"+f.n+" (marca)”)."); return false; }
@@ -572,7 +628,7 @@ window.App={
    if(!inRange(r.peso,30,300)||!inRange(r.cintura,40,250)||!inRange(r.kcal,0,15000)||!inRange(r.prot,0,1000)||!inRange(r.sono,0,24)||!inRange(r.aderencia,0,100)){
      toast("Confira os intervalos: peso 30–300, cintura 40–250, kcal 0–15.000, proteína 0–1.000, sono 0–24, aderência 0–100."); return false; }
    ["peso","cintura","kcal","prot","sono","aderencia"].forEach(k=>{ if(r[k]!=="") r[k]=String(num(r[k])); });
-   const commit=(replaceId)=>{ S.diary=S.diary.filter(x=>x.id!==r.id&&x.id!==replaceId); S.diary.push(r); save(); closeSheet(); render(); };
+   const commit=(replaceId)=>{ S.diary=S.diary.filter(x=>x.id!==r.id&&x.id!==replaceId); S.diary.push(r); contarEdicao(); save(); pedirPersistencia(); closeSheet(); render(); };
    const dup=S.diary.find(x=>x.data===r.data&&x.id!==r.id);
    if(dup){ mConfirm(`Já existe um registro em ${dataBR(r.data)}. Substituir pelo novo?`,()=>commit(dup.id),"Substituir"); return false; }
    commit(null); return false; },
@@ -581,7 +637,7 @@ window.App={
    const r={id:id||uid(),data:g("#t_data"),grupo:g("#t_grupo"),exercicio:g("#t_ex"),series:g("#t_ser"),reps:g("#t_rep"),carga:g("#t_car"),obs:g("#t_obs")};
    if(!C.isISODate(r.data)){ toast("Informe uma data válida."); return false; }
    if(!inRange(r.series,0,50)||!inRange(r.carga,0,1000)){ toast("Confira séries (0–50) e carga (0–1.000 kg)."); return false; }
-   const i=S.treino.findIndex(x=>x.id===r.id); if(i>=0) S.treino[i]=r; else S.treino.push(r);
+   const i=S.treino.findIndex(x=>x.id===r.id); if(i>=0) S.treino[i]=r; else S.treino.push(r); contarEdicao();
    save(); closeSheet(); render(); return false; },
  treinoDel(id){ mConfirm("Excluir este treino?",()=>{ S.treino=S.treino.filter(x=>x.id!==id); save(); render(); }); },
  saveShop(e){ e.preventDefault(); const n=$("#s_n").value.trim(); if(!n) return false;
@@ -600,16 +656,29 @@ window.App={
  saveSuple(e){ e.preventDefault(); const g=x=>$(x).value.trim(); if(!g("#u_n")) return false;
    S.supleCustom.push({id:uid(),n:g("#u_n"),f:g("#u_f"),d:g("#u_d"),h:g("#u_h"),o:g("#u_o")}); save(); closeSheet(); render(); return false; },
  supleDel(id){ mConfirm("Excluir este suplemento?",()=>{ S.supleCustom=S.supleCustom.filter(s=>s.id!==id); delete S.supleUsa["c_"+id]; save(); render(); }); },
- exportJSON(){ const payload={...S,app:"FORTIS",exportadoEm:new Date().toISOString(),versaoApp:VERSION};
-   download(new Blob([JSON.stringify(payload,null,1)],{type:"application/json"}),`fortis-backup-${todayISO()}.json`); toast("Backup exportado."); },
+ exportJSON(){ download(new Blob([backupJSON()],{type:"application/json"}),`fortis-backup-${todayISO()}.json`);
+   marcarBackup(); toast("Backup baixado. Guarde o arquivo fora do celular (WhatsApp, e-mail ou Drive)."); render(); },
+ /* abre a folha de compartilhamento do celular com o arquivo; sem suporte, baixa o arquivo */
+ async shareBackup(){ const json=backupJSON(), base=`fortis-backup-${todayISO()}`;
+   // Chrome/Android não compartilha .json; .txt é aceito e o Importar lê os dois
+   const files=[new File([json],base+".json",{type:"application/json"}),new File([json],base+".txt",{type:"text/plain"})];
+   const file=navigator.canShare?files.find(f=>{ try{ return navigator.canShare({files:[f]}); }catch(e){ return false; } }):null;
+   if(file&&navigator.share){
+     try{ await navigator.share({files:[file],title:"Backup FORTIS",text:"Backup dos meus dados do app FORTIS. Guarde este arquivo para restaurar em outro celular."});
+       marcarBackup(); toast("Backup enviado ✓"); render(); return; }
+     catch(e){ if(e&&e.name==="AbortError") return; }   // a pessoa cancelou
+   }
+   App.exportJSON(); },
+ snoozeBackup(){ S.meta.snoozeUntil=new Date(Date.now()+3*864e5).toISOString(); save(); render();
+   toast("Ok! Vamos lembrar de novo em 3 dias. O backup fica em Mais → Backup e dados."); },
  importFile(inp){ const f=inp.files[0]; inp.value=""; if(!f) return;
    if(f.size>5e6){ toast("Arquivo grande demais para ser um backup do FORTIS."); return; }
    const rd=new FileReader();
-   rd.onload=()=>{ let d; try{ d=JSON.parse(rd.result); }catch(e){ toast("Arquivo inválido: não é um JSON."); return; }
+   rd.onload=()=>{ let d; try{ d=JSON.parse(rd.result); }catch(e){ toast("Arquivo inválido: escolha o arquivo fortis-backup."); return; }
      if(!d||typeof d!=="object"||typeof d.profile!=="object"){ toast("Arquivo inválido: não parece um backup do FORTIS."); return; }
      const clean=C.sanitizeState(d,uid);
      const resumo=`${clean.diary.length} registro(s) diário(s), ${clean.treino.length} treino(s), ${clean.plan.length} item(ns) no plano e ${clean.customFoods.length} alimento(s) próprio(s)`;
-     mConfirm(`Substituir TODOS os dados atuais pelo backup?<br><span class="muted small">${esc(resumo)}.</span>`,()=>{ S=clean; S.onboarded=true; save(); ui.view="inicio"; ui.tab="inicio"; render(); toast("Backup importado."); },"Importar"); };
+     mConfirm(`Substituir TODOS os dados atuais pelo backup?<br><span class="muted small">${esc(resumo)}.</span>`,()=>{ S=clean; S.onboarded=true; S.meta.lastBackup=new Date().toISOString(); S.meta.editsSinceBackup=0; if(!S.meta.createdAt) S.meta.createdAt=S.meta.lastBackup; save(); ui.view="inicio"; ui.tab="inicio"; render(); toast("Backup importado."); },"Importar"); };
    rd.onerror=()=>toast("Não foi possível ler o arquivo.");
    rd.readAsText(f); },
  exportCSV(){ const dec=v=>v===""||v==null?"":String(v).replace(".",",");   // Excel pt-BR: “;” separa colunas, “,” é decimal
@@ -618,7 +687,7 @@ window.App={
    diarySorted().forEach(r=>rows.push([r.data,weekOf(r.data)||"",dec(r.peso),dec(r.cintura),dec(r.kcal),dec(r.prot),dec(r.sono),r.treinou,dec(r.aderencia)]));
    const csv=rows.map(r=>r.map(cell).join(";")).join("\r\n");
    download(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}),`fortis-registro-${todayISO()}.csv`); },
- resetAll(){ mConfirm("Apagar TODOS os dados do app? Isso não pode ser desfeito.",()=>{ S=C.defState(); save(); ui.view="inicio"; ui.tab="inicio"; ui.ob={}; ui.obStep=0; render(); window.scrollTo(0,0); },"Apagar tudo"); },
+ resetAll(){ mConfirm("Apagar TODOS os dados do app? Isso não pode ser desfeito.",()=>{ S=C.defState(); S.meta.createdAt=new Date().toISOString(); save(); ui.view="inicio"; ui.tab="inicio"; ui.ob={}; ui.obStep=0; render(); window.scrollTo(0,0); },"Apagar tudo"); },
  /* onboarding */
  obNext(){ obCollect(); const err=obValidate(ui.obStep); if(err){ toast(err); return; }
    if(ui.obStep>=OB_LAST){ obFinish(); return; }
@@ -640,6 +709,7 @@ document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&modal.classList.co
 if("serviceWorker" in navigator && /^https?:$/.test(location.protocol)){
   try{ navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).catch(()=>{}); }catch(e){}
 }
+if(!S.meta.createdAt) S.meta.createdAt=new Date().toISOString();
 save();     // persiste a migração/validação feita na carga
 render();
 })();

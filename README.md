@@ -1,4 +1,4 @@
-# 🛡️ FORTIS — App PWA (Calorias, Macros e Progresso) — v1.3
+# 🛡️ FORTIS — App PWA (Calorias, Macros e Progresso) — v1.5
 
 Acompanha o ebook + planilha FORTIS. **PWA instalável, 100% offline, dados só no aparelho** (sem conta, sem servidor).
 
@@ -80,6 +80,21 @@ O GitHub Actions (`.github/workflows/ci.yml`) roda os dois a cada push/PR.
 - Semana 1 = data do primeiro registro (equivale ao `$A$2` da planilha). A variação semanal compara com a última semana anterior que tem pesagem (normalizada por semana).
 - Um registro por dia: lançar outro na mesma data pede confirmação e substitui.
 - CSV exportado no padrão do Excel pt-BR (`;` entre colunas, vírgula decimal, UTF-8 com BOM).
+
+## Novidades da v1.5 — medidas caseiras
+- Ao adicionar um alimento ao plano, escolha a **medida**: unidade, colher de sopa, concha, fatia, copo (200 ml), **ml** para líquidos… ou gramas. O app converte para gramas e mostra na hora calorias e macros (ex.: “2 × unidade = 100 g • 155 kcal”).
+- Todos os 65 alimentos do banco têm pelo menos uma medida (`FORTIS.UNITS` em `foods.js`, valores aproximados de tabelas de medidas caseiras). A lista de alimentos mostra “📏 1 unidade ≈ 50 g”.
+- No plano, itens por medida mostram “2 × unidade (100 g)” e o campo altera a **quantidade de medidas** (as gramas são recalculadas).
+- Alimentos próprios podem ter uma medida caseira (nome + gramas).
+- Cálculos continuam em gramas (`q`); a medida fica em `u`/`n` no item do plano. Planos antigos (só gramas) seguem funcionando.
+
+## Novidades da v1.4 — backup sem esquecer
+- **Lembrete no Início** (“Proteja seus dados”) quando há dados e nenhum backup (5 registros ou 1 semana de uso), quando o último backup tem 14+ dias ou após 15 registros novos. “Agora não” adia por 3 dias. Regra em `backupStatus` (`core.js`), com testes.
+- **Backup em 1 toque:** “Enviar backup” abre o compartilhamento do celular (WhatsApp, e-mail, Drive); sem suporte, baixa o arquivo. No Android o arquivo vai como `.txt` (o Chrome não compartilha `.json`); o Importar aceita os dois.
+- Tela **Backup e dados** com o status (“Último backup: há X dias”), passo a passo para **trocar de celular** e o status também no menu Mais.
+- Pede **armazenamento persistente** ao navegador (após registrar ou fazer backup) para reduzir o risco de o sistema apagar os dados.
+- Aviso de backup na tela de boas-vindas e na página do ebook.
+- `instalar.html` detecta o aparelho: botão **Instalar agora** (1 toque) no Android, passo a passo do Safari no iPhone e QR só no computador.
 
 ## Novidades da v1.3 — mais fácil para iniciantes
 - **Nova tela de boas-vindas** com o logo vetorial e textos de verdade (a capa do ebook continua em *Sobre o método*).

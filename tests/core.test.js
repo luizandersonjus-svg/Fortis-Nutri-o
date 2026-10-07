@@ -216,3 +216,56 @@ test("sanitizeState: migra uso de suplementos da v1.1 (posição) para id", () =
   // estado já migrado (v2) é estável: sanitizar de novo não altera nada
   assert.deepEqual(C.sanitizeState(s, gen), s);
 });
+
+test("backupStatus: quando lembrar de fazer backup", () => {
+  const now = Date.parse("2026-10-04T12:00:00Z");
+  const dia = 864e5, iso = (ms) => new Date(ms).toISOString();
+  const diary = (n) => Array.from({ length: n }, (_, i) => ({ id: "d" + i, data: "2026-09-0" + ((i % 9) + 1) }));
+  const st = (extra) => ({ ...C.defState(), ...extra, meta: { ...C.defState().meta, ...(extra.meta || {}) } });
+
+  assert.equal(C.backupStatus(st({}), now).due, false, "sem dados, sem aviso");
+  assert.equal(C.backupStatus(st({ diary: diary(2), meta: { createdAt: iso(now - dia) } }), now).due, false, "pouco uso ainda");
+  assert.equal(C.backupStatus(st({ diary: diary(5) }), now).reason, "never", "5 registros sem nenhum backup");
+  assert.equal(C.backupStatus(st({ plan: [{ f: "x" }], meta: { createdAt: iso(now - 8 * dia) } }), now).reason, "never", "1 semana de uso");
+  assert.equal(C.backupStatus(st({ diary: diary(5), meta: { lastBackup: iso(now - 3 * dia) } }), now).due, false, "backup recente");
+  const old = C.backupStatus(st({ diary: diary(5), meta: { lastBackup: iso(now - 15 * dia) } }), now);
+  assert.equal(old.reason, "old"); assert.equal(old.days, 15);
+  assert.equal(C.backupStatus(st({ diary: diary(5), meta: { lastBackup: iso(now - dia), editsSinceBackup: 15 } }), now).reason, "many");
+  assert.equal(C.backupStatus(st({ diary: diary(9), meta: { snoozeUntil: iso(now + dia) } }), now).due, false, "adiado");
+  assert.equal(C.backupStatus(st({ diary: diary(9), meta: { snoozeUntil: iso(now - dia) } }), now).due, true, "adiamento venceu");
+});
+
+test("sanitizeState: valida os metadados de backup", () => {
+  const s = C.sanitizeState({ profile: {}, meta: { lastBackup: "2026-01-01T10:00:00Z", snoozeUntil: "lixo", editsSinceBackup: "-4" } }, gen);
+  assert.equal(s.meta.lastBackup, "2026-01-01T10:00:00.000Z");
+  assert.equal(s.meta.snoozeUntil, null);
+  assert.equal(s.meta.editsSinceBackup, 0);
+  assert.deepEqual(C.sanitizeState({}, gen).meta, C.defState().meta);
+});
+
+test("medidas caseiras: todo alimento do banco tem medida e a conversão para gramas", () => {
+  D.FOODS.forEach((f) => assert.ok((D.UNITS[f[0]] || []).length > 0, "sem medida: " + f[0]));
+  Object.keys(D.UNITS).forEach((n) => assert.ok(D.FOODS.some((f) => f[0] === n), "medida para alimento inexistente: " + n));
+  const map = C.foodMap(D.FOODS, [{ n: "Pão caseiro", k: 280, p: 9, c: 50, f: 4, fib: 2, un: "fatia", ug: 40 }]);
+  const plain = (x) => JSON.parse(JSON.stringify(x)); // UNITS vem de outro contexto (vm)
+  assert.deepEqual(plain(C.measuresOf("Ovo cozido", map["Ovo cozido"], D.UNITS)), [{ label: "unidade", g: 50 }]);
+  assert.deepEqual(plain(C.measuresOf("Pão caseiro", map["Pão caseiro"], D.UNITS)), [{ label: "fatia", g: 40 }]);
+  assert.equal(C.gramsFor(2, 50), 100);
+  assert.equal(C.gramsFor("1,5", 13), 19.5);
+  assert.equal(C.gramsFor(200, 1.03), 206);
+  const t = C.sumItems([{ f: "Ovo cozido", q: String(C.gramsFor(2, 50)), u: "unidade", n: "2" }], map);
+  close(t.k, 155);
+});
+
+test("sanitizeState: guarda a medida caseira do plano e do alimento próprio", () => {
+  const s = C.sanitizeState({
+    profile: {},
+    plan: [{ m: "Café", f: "Ovo cozido", q: "100", u: "unidade", n: "2" }, { m: "Café", f: "Ovo cozido", q: "50", u: "unidade", n: "0" }, { f: "Arroz branco cozido", q: "150" }],
+    customFoods: [{ n: "Pão caseiro", k: 280, un: "fatia", ug: "40" }, { n: "Bolo", k: 300, un: "fatia", ug: "" }]
+  }, gen);
+  assert.deepEqual(s.plan[0], { m: "Café", f: "Ovo cozido", q: "100", u: "unidade", n: "2" });
+  assert.equal(s.plan[1].u, undefined, "quantidade inválida volta a ser só gramas");
+  assert.equal(s.plan[2].u, undefined);
+  assert.equal(s.customFoods[0].un, "fatia"); assert.equal(s.customFoods[0].ug, 40);
+  assert.equal(s.customFoods[1].un, undefined);
+});
