@@ -10,7 +10,9 @@ const C = require("../core.js");
 const ctx = { window: {} };
 ctx.window.FORTIS = {};
 ctx.FORTIS = ctx.window.FORTIS;
-vm.runInNewContext(fs.readFileSync(path.join(__dirname, "..", "foods.js"), "utf8"), ctx);
+vm.createContext(ctx);
+vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "foods.js"), "utf8"), ctx);
+vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "taco.js"), "utf8"), ctx);
 const D = ctx.FORTIS;
 
 const close = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} ≈ ${b}`);
@@ -67,7 +69,7 @@ test("calcMacros: proteína/gordura por kg e carbo pelo restante", () => {
   close(mc.gordG, 70);
   close(mc.carbsG, (alvo - 560 - 630) / 4);
   close(mc.pctP + mc.pctG + mc.pctC, 1);
-  assert.equal(mc.fibra, 38);
+  assert.equal(mc.fibra, Math.round(alvo * 14 / 1000), "fibra: 14 g por 1.000 kcal");
   assert.equal(mc.alertaP, "ok");
   assert.equal(C.calcMacros(perfilH, { protKg: 1.2, gordKg: 1 }, D.ACTS, D.GOALS).alertaP, "low");
   assert.equal(C.calcMacros(perfilH, { protKg: 3, gordKg: 1 }, D.ACTS, D.GOALS).alertaP, "high");
@@ -268,4 +270,93 @@ test("sanitizeState: guarda a medida caseira do plano e do alimento próprio", (
   assert.equal(s.plan[2].u, undefined);
   assert.equal(s.customFoods[0].un, "fatia"); assert.equal(s.customFoods[0].ug, 40);
   assert.equal(s.customFoods[1].un, undefined);
+});
+
+test("TACO completa: nomes únicos (inclusive vs. básicos), valores numéricos e categoria", () => {
+  assert.ok(D.TACO.length > 550, "tabela TACO carregada: " + D.TACO.length);
+  const names = [...D.FOODS, ...D.TACO].map((f) => f[0].toLowerCase());
+  assert.equal(new Set(names).size, names.length, "nome repetido no banco");
+  D.TACO.forEach((f) => {
+    assert.ok(f.slice(1, 6).every((x) => typeof x === "number" && x >= 0) && f[1] <= 900, "valor inválido: " + f[0]);
+    assert.ok(["cru", "cozido", "pronto"].includes(f[6]) && f[9], "estado/categoria: " + f[0]);
+  });
+  const m = C.foodMap([...D.FOODS, ...D.TACO], []);
+  assert.deepEqual([m["Frango, peito, sem pele, grelhado"].k, m["Frango, peito, sem pele, grelhado"].p], [159, 32]);
+  assert.equal(m["Frango, peito, sem pele, grelhado"].cat, "Carnes e derivados");
+});
+
+test("leituraDe: faixa de referência 0,25%–0,5%/semana e objetivo de manutenção", () => {
+  assert.match(C.leituraDe(0.0015, "Superávit leve"), /abaixo do ritmo/, "0,15%/sem não está dentro da referência");
+  assert.match(C.leituraDe(0.003, "Superávit leve"), /dentro da referência/);
+  assert.match(C.leituraDe(0.006, "Superávit leve"), /acima do ritmo/);
+  assert.match(C.leituraDe(0, "Superávit leve"), /estável.*aumentar/);
+  assert.match(C.leituraDe(0, "Manutenção ou recomposição"), /dentro do esperado/, "manter: peso estável é o objetivo");
+  assert.match(C.leituraDe(0.004, "Manutenção ou recomposição"), /reduza/);
+  assert.match(C.leituraDe(-0.004, "Manutenção ou recomposição"), /aumente/);
+});
+
+test("progressData: semana em andamento com poucas pesagens não gera variação nem vira base", () => {
+  const diary = [];
+  for (let d = 1; d <= 14; d++) diary.push({ data: `2026-01-${String(d).padStart(2, "0")}`, peso: "80" });
+  diary.push({ data: "2026-01-15", peso: "81.2" }); // 1 pesagem na semana 3, após uma refeição pesada
+  let pd = C.progressData(diary, { hoje: "2026-01-16", objetivo: "Superávit leve" });
+  assert.equal(pd[2].incompleta, true);
+  assert.equal(pd[2].var, null);
+  assert.equal(pd[2].leitura, "");
+  // a mesma semana, já encerrada, conta normalmente (quem pesa 1x por semana)
+  pd = C.progressData(diary, { hoje: "2026-01-25", objetivo: "Superávit leve" });
+  assert.equal(pd[2].incompleta, false);
+  close(pd[2].var, 1.2 / 80);
+  // com 3 pesagens a semana em andamento já é lida
+  diary.push({ data: "2026-01-16", peso: "80.2" }, { data: "2026-01-17", peso: "80.1" });
+  pd = C.progressData(diary, { hoje: "2026-01-17", objetivo: "Superávit leve" });
+  assert.equal(pd[2].incompleta, false);
+  assert.equal(pd[2].nPeso, 3);
+  assert.ok(pd[2].var != null);
+});
+
+test("perfil: valores fora da faixa não geram metas absurdas e aparecem no aviso", () => {
+  assert.equal(C.calcPerfil({ ...perfilH, idade: "1000" }, D.ACTS, D.GOALS), null);
+  assert.equal(C.calcPerfil({ ...perfilH, altura: "1.91" }, D.ACTS, D.GOALS), null, "altura em metros");
+  assert.equal(C.calcPerfil({ ...perfilH, peso: "400" }, D.ACTS, D.GOALS), null);
+  const e = C.perfilErros({ ...perfilH, altura: "1.91", idade: "-5" }, D.ACTS, D.GOALS).map((x) => x.msg).join(" | ");
+  assert.match(e, /altura entre 100 e 250 cm/); assert.match(e, /idade entre 10 e 100/);
+  assert.match(C.perfilErros({ ...perfilH, atividade: "Inexistente" }, D.ACTS, D.GOALS)[0].msg, /quanto se movimenta/);
+  assert.deepEqual(C.perfilErros(perfilH, D.ACTS, D.GOALS), []);
+});
+
+test("macros: carbo nunca negativo, % somam 100 e meta negativa não vira 'Dentro de ±5%'", () => {
+  const mc = C.calcMacros(perfilH, { protKg: 5, gordKg: 3 }, D.ACTS, D.GOALS);
+  assert.equal(mc.carbsG, 0); assert.equal(mc.insuficiente, true);
+  close(mc.pctP + mc.pctG + mc.pctC, 1);
+  assert.equal(mc.alertaG, "high");
+  assert.deepEqual(C.statusOf(56, -296), ["", ""]);
+  assert.deepEqual(C.statusOf(0, 0), ["", ""]);
+});
+
+test("foodMap aceita nomes como 'constructor' e '__proto__' sem quebrar as somas", () => {
+  const m = C.foodMap(D.FOODS, [{ n: "__proto__", k: 100, p: 10, c: 0, f: 0 }]);
+  assert.equal(m["constructor"], undefined);
+  assert.equal(m["__proto__"].k, 100);
+  const t = C.sumItems([{ f: "constructor", q: "100" }, { f: "__proto__", q: "100" }], m);
+  assert.equal(t.k, 100);
+});
+
+test("sanitizeState: cardápio-modelo mantém a linha de cada alimento; lista de compras e lembrete protegidos", () => {
+  let s = C.sanitizeState({ profile: {}, estr: { 1: [null, null, null, { f: "Ovo cozido", q: "100" }] } }, gen);
+  assert.equal(s.estr[1].length, 4); assert.equal(s.estr[1][3].f, "Ovo cozido"); assert.equal(s.estr[1][0].f, "");
+  s = C.sanitizeState(JSON.parse('{"profile":{},"shop":{"Ovos":{"marcado":"false"},"__proto__":{"marcado":true},"Vazio":{}},"shopCustom":[{"n":"  a  "}]}'), gen);
+  assert.equal(s.shop.Ovos, undefined, '"false" não marca o item (e entrada vazia não é guardada)');
+  assert.equal(Object.getPrototypeOf(s.shop), Object.prototype);
+  assert.equal(s.shopCustom[0].n, "a");
+  const st = { diary: Array.from({ length: 9 }, (_, i) => ({ data: "2026-01-0" + (i + 1) })), meta: { snoozeUntil: "9999-01-01T00:00:00Z" } };
+  assert.equal(C.backupStatus(st).due, true, "adiamento absurdo não silencia o lembrete");
+});
+
+test("sanitizeState: suplementos com id repetido ou nome vazio na v1 não herdam marcação errada", () => {
+  let s = C.sanitizeState({ v: 2, profile: {}, supleCustom: [{ id: "x", n: "A" }, { id: "x", n: "B" }], supleUsa: { c_x: "Sim" } }, gen);
+  assert.equal(Object.values(s.supleUsa).filter((v) => v === "Sim").length, 1);
+  s = C.sanitizeState({ profile: {}, supleCustom: [{ n: "" }, { n: "A" }, { n: "B" }], supleUsa: { c1: "Sim" } }, gen);
+  assert.equal(s.supleUsa["c_" + s.supleCustom[0].id], "Sim", "c1 era A");
+  assert.equal(s.supleUsa["c_" + s.supleCustom[1].id], undefined);
 });
