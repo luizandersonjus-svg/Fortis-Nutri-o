@@ -1,4 +1,4 @@
-# 🛡️ FORTIS — App PWA (Calorias, Macros e Progresso) — v1.5
+# 🛡️ FORTIS — App PWA (Calorias, Macros e Progresso) — v1.6
 
 Acompanha o ebook + planilha FORTIS. **PWA instalável, 100% offline, dados só no aparelho** (sem conta, sem servidor).
 
@@ -8,7 +8,7 @@ Acompanha o ebook + planilha FORTIS. **PWA instalável, 100% offline, dados só 
 - **Macronutrientes** — g/kg, distribuição, fibras, alertas + gráfico de pizza
 - **Plano Alimentar** — refeições, totais vs. metas (±5%), subtotal por refeição
 - **Estruturas de Referência** — ≈2.200 / 2.800 / 3.400 kcal (não são cardápios prontos)
-- **Banco de Alimentos** — 65 alimentos + busca (ignora acentos) + cadastro próprio
+- **Banco de Alimentos** — 65 básicos com medidas caseiras + **TACO 4ª ed. completa** (591 alimentos), filtro por categoria, busca por partes do nome (ignora acentos) + cadastro próprio (também direto em *Adicionar alimento*)
 - **Registro Diário** — peso, cintura, kcal, proteína, sono, treino, aderência
 - **Progresso** — médias semanais (12 semanas, estende se houver mais), variação, leituras + 4 gráficos
 - **Treino** — log + séries por grupo vs. referência (6–10 / 10–16)
@@ -17,7 +17,7 @@ Acompanha o ebook + planilha FORTIS. **PWA instalável, 100% offline, dados só 
 - **Backup** — exportar/importar JSON, exportar CSV, apagar dados
 
 ## Identidade visual
-- **Símbolo:** escudo dourado com o **capacete espartano da capa do ebook**, redesenhado em vetor com textura de folha de ouro (`assets/logo.svg`). Usado no cabeçalho, na tela de boas-vindas, na página de instalação e nos ícones PWA.
+- **Símbolo:** o emblema original do ebook (escudo com capacete espartano, halteres e anel dourado), exportado do Canva em alta resolução (`assets/fonte/emblema-canva.jpg`, design “FORTIS - capa final do ebook”). Dele saem `assets/emblema.png` (boas-vindas, página de instalação, ebook), `assets/simbolo.png` (cabeçalho, fundo transparente) e os ícones PWA.
 - Preto + dourado metálico, pincelada dourada e os 5 checks da capa (`assets/cover.jpg` em *Sobre o método*).
 
 ## Página de instalação + QR code
@@ -49,7 +49,8 @@ Abra `http://localhost:8080` (app) ou `/instalar.html` (página de instalação)
 - Depois de publicado: Android → Chrome ⋮ → **Instalar app**. iPhone → Safari → Compartilhar → **Adicionar à Tela de Início**.
 
 ## Trocar logo/ícones
-- Substitua `assets/cover.jpg` (capa). Ao mudar `assets/logo.svg`, copie o mesmo SVG para dentro de `instalar.html` (a página é autocontida) e regenere os PNGs de `icons/` (192, 512, maskable 512 com margem de segurança, apple-touch 180, favicon 32) renderizando o SVG num navegador — o `cairosvg` não suporta o filtro de textura.
+- Substitua `assets/cover.jpg` (capa).
+- **Símbolo:** exporte a arte nova do Canva em PNG, salve por cima de `assets/fonte/emblema-canva.jpg` e rode `python3 gerar_icones.py` (requer `pillow` e `numpy`). O script recorta o círculo, gera o símbolo transparente do cabeçalho, todos os ícones (192, 512, maskable 512 com margem de segurança, apple-touch 180, favicon 32 só com o escudo) e embute o emblema no `instalar.html`. Depois rode `node ebook/gerar.js` para atualizar a página de instalação do ebook.
 
 ## Estrutura do código
 | Arquivo | Papel |
@@ -58,6 +59,7 @@ Abra `http://localhost:8080` (app) ou `/instalar.html` (página de instalação)
 | `core.js` | **Cálculos puros** (TMB/GET, macros, totais, semanas, progresso) e validação/migração do estado. Roda no navegador e no Node (testes) |
 | `app.js` | Telas, modais, navegação e ações (`window.App`) |
 | `foods.js` | Dados base: alimentos, fatores, estruturas, compras, suplementos |
+| `taco.js` | TACO 4ª ed. (NEPA/UNICAMP, 2011), por 100 g. **Gerado** por `python3 gerar_taco.py` a partir dos CSVs do projeto [taco-api](https://github.com/raulfdm/taco-api) (MIT). Não editar à mão |
 | `sw.js` | Service Worker (offline) |
 | `fonts/` | Oswald (SIL OFL 1.1, ver `fonts/OFL.txt`) embutida para funcionar offline |
 | `tests/` | `core.test.js` (unitários, `node:test`) e `e2e.js` (navegador, Playwright) |

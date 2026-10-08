@@ -2,11 +2,11 @@
    Estratégia: REDE PRIMEIRO para arquivos do próprio site (com tempo-limite), caindo para o cache offline.
    Assim quem está online sempre recebe a versão publicada mais recente, e quem está offline continua usando o app.
    (A v1.1 usava "cache primeiro": o usuário só recebia atualizações quando o nome do cache era trocado à mão.) */
-const CACHE = "fortis-v3";
+const CACHE = "fortis-v5";
 const NET_TIMEOUT_MS = 3500;
 const ASSETS = [
-  "./", "./index.html", "./instalar.html", "./styles.css", "./app.js", "./core.js", "./foods.js",
-  "./manifest.webmanifest", "./assets/cover.jpg", "./assets/logo.svg", "./assets/qr-install.png",
+  "./", "./index.html", "./instalar.html", "./styles.css", "./app.js", "./core.js", "./foods.js", "./taco.js",
+  "./manifest.webmanifest", "./assets/cover.jpg", "./assets/emblema.png", "./assets/simbolo.png", "./assets/qr-install.png",
   "./fonts/oswald-latin.woff2",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/maskable-512.png",
   "./icons/apple-touch-icon.png", "./icons/favicon-32.png"

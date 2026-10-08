@@ -14,7 +14,7 @@ body{width:210mm;height:297mm;background:#0B0B0B;color:#fff;font-family:"Helveti
   repeating-linear-gradient(135deg,rgba(255,255,255,.015) 0 2px,transparent 2px 5px)}
 .page{height:297mm;padding:14mm 16mm 12mm;display:flex;flex-direction:column;align-items:center;text-align:center;
   border:1.2mm solid transparent;border-image:linear-gradient(180deg,#8a6517,#E8BE4E 40%,#8a6517) 1}
-.logo{width:27mm;height:32mm;filter:drop-shadow(0 2mm 6mm rgba(201,154,46,.35))}
+.logo{width:36mm;height:auto;filter:drop-shadow(0 2mm 6mm rgba(201,154,46,.35))}
 h1{font-family:Oswald,"Arial Narrow",sans-serif;font-size:15mm;line-height:1;margin:4mm 0 0;letter-spacing:.6mm;text-transform:uppercase}
 h1 span{display:block;font-size:8.6mm;margin-top:2mm;background:linear-gradient(135deg,#F3D67C,#C99A2E 45%,#8a6517);-webkit-background-clip:text;background-clip:text;color:transparent}
 .brush{width:70mm;height:2.6mm;border-radius:2mm;margin:5mm auto 4mm;background:linear-gradient(100deg,#8a6517,#E8BE4E 30%,#C99A2E 55%,#F3D67C 75%,#8a6517)}
@@ -48,33 +48,7 @@ h1 span{display:block;font-size:8.6mm;margin-top:2mm;background:linear-gradient(
 </style>
 </head>
 <body><div class="page">
-<svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240">
-<defs>
-<linearGradient id="fgold" x1="0" y1="0" x2="1" y2="1">
-<stop offset="0" stop-color="#F4CF6A"/><stop offset=".35" stop-color="#DDA233"/><stop offset=".7" stop-color="#B27820"/><stop offset="1" stop-color="#734A10"/>
-</linearGradient>
-<radialGradient id="fshine" cx=".38" cy=".3" r=".75">
-<stop offset="0" stop-color="#FFF1B8" stop-opacity=".55"/><stop offset=".5" stop-color="#FFF1B8" stop-opacity="0"/>
-</radialGradient>
-<filter id="fleaf" x="0" y="0" width="1" height="1">
-<feTurbulence type="fractalNoise" baseFrequency=".16 .2" numOctaves="4" seed="11" result="n"/>
-<feColorMatrix in="n" type="matrix" values="0 0 0 0 .36  0 0 0 0 .22  0 0 0 0 .03  0 0 0 -2.8 1.62" result="spots"/>
-<feComposite in="spots" in2="SourceGraphic" operator="atop"/>
-</filter>
-</defs>
-<path d="M100 8 188 32V120C188 176 152 210 100 234 48 210 12 176 12 120V32Z" fill="url(#fgold)" filter="url(#fleaf)"/>
-<path d="M100 8 188 32V120C188 176 152 210 100 234 48 210 12 176 12 120V32Z" fill="url(#fshine)"/>
-<path d="M100 24 174 44V120C174 167 144 196 100 217 56 196 26 167 26 120V44Z" fill="#0B0B0B"/>
-<path d="M100 24 174 44V120C174 167 144 196 100 217 56 196 26 167 26 120V44Z" fill="none" stroke="#000" stroke-opacity=".6" stroke-width="2"/>
-<g>
-<path id="helm" d="M100 38C103 47 107 53 113 56 132 64 143 80 143 100L142 140C142 162 135 186 124 214L100 200 76 214C65 186 58 162 58 140L57 100C57 80 68 64 87 56 93 53 97 47 100 38Z" fill="url(#fgold)" filter="url(#fleaf)"/>
-<path d="M100 38C103 47 107 53 113 56 132 64 143 80 143 100L142 140C142 162 135 186 124 214L100 200 76 214C65 186 58 162 58 140L57 100C57 80 68 64 87 56 93 53 97 47 100 38Z" fill="url(#fshine)" stroke="#5a3c0a" stroke-width="1.5"/>
-<path d="M63 117H137L129 139 108 145 111 212H89L92 145 71 139Z" fill="#0B0B0B"/>
-<path d="M89 117H111L106 150 100 162 94 150Z" fill="url(#fgold)" filter="url(#fleaf)"/>
-<path d="M80 70C67 79 61 90 60 106 65 92 72 84 84 76Z" fill="#0B0B0B"/>
-<path d="M120 70C133 79 139 90 140 106 135 92 128 84 116 76Z" fill="#0B0B0B"/>
-</g>
-</svg>
+<img class="logo" src="../assets/emblema.png" alt="FORTIS">
 <h1>Seu app FORTIS<span>Calorias • Macros • Progresso</span></h1>
 <div class="brush"></div>
 <p class="lead">Descubra <b>quanto comer por dia</b>, monte suas refeições e acompanhe sua evolução — tudo no seu celular, como um aplicativo.</p>

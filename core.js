@@ -8,6 +8,9 @@
   "use strict";
 
   const MIN_WEEKS = 12; // a planilha acompanha 12 semanas; o app estende se houver mais dados
+  const MIN_PESAGENS = 3; // semana em andamento só gera leitura com pelo menos 3 pesagens
+  const RITMO_MIN = 0.0025, RITMO_MAX = 0.005; // ganho de referência: 0,25% a 0,5% do peso por semana
+  const OBJ_MANTER = "Manutenção ou recomposição";
   const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
   const ID_RE = /^[A-Za-z0-9_-]{1,40}$/;
 
@@ -36,12 +39,28 @@
   const avg = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null);
 
   /* ---------- perfil e metas ---------- */
+  /* faixas aceitas (as mesmas no onboarding e na tela Perfil); fora delas a fórmula não vale */
+  const LIM = { idade: [10, 100], peso: [30, 300], altura: [100, 250] };
+  /* o que falta ou está fora da faixa no perfil: [{campo, msg}] (vazio = perfil completo) */
+  function perfilErros(profile, ACTS, GOALS) {
+    const p = profile || {}, out = [];
+    const faixa = (campo, v, nome, un, dica) => {
+      if (v == null) out.push({ campo, msg: nome });
+      else if (v < LIM[campo][0] || v > LIM[campo][1]) out.push({ campo, msg: `${nome} entre ${LIM[campo][0]} e ${LIM[campo][1]} ${un}${dica || ""}` });
+    };
+    if (!["Masculino", "Feminino"].includes(p.sexo)) out.push({ campo: "sexo", msg: "sexo" });
+    faixa("idade", num(p.idade), "idade", "anos");
+    faixa("peso", num(p.peso), "peso", "kg");
+    faixa("altura", num(p.altura), "altura", "cm", " (ex.: 175)");
+    if (!(ACTS || []).some((x) => x[0] === p.atividade)) out.push({ campo: "atividade", msg: "quanto se movimenta" });
+    if (!(GOALS || []).some((x) => x[0] === p.objetivo)) out.push({ campo: "objetivo", msg: "objetivo" });
+    return out;
+  }
   function calcPerfil(profile, ACTS, GOALS) {
     const p = profile || {};
-    const peso = num(p.peso), alt = int(p.altura), idade = int(p.idade);
+    if (perfilErros(p, ACTS, GOALS).length) return null;
+    const peso = num(p.peso), alt = num(p.altura), idade = int(p.idade);
     const a = ACTS.find((x) => x[0] === p.atividade), g = GOALS.find((x) => x[0] === p.objetivo);
-    if (!p.sexo || idade == null || peso == null || alt == null || !a || !g) return null;
-    if (peso <= 0 || alt <= 0 || idade <= 0) return null;
     // Mifflin-St Jeor
     const base = 10 * peso + 6.25 * alt - 5 * idade;
     const tmb = p.sexo === "Masculino" ? base + 5 : base - 161;
@@ -54,22 +73,24 @@
     const pk = num(macros && macros.protKg), gk = num(macros && macros.gordKg);
     if (!pf || pk == null || gk == null) return null;
     const protG = pf.peso * pk, gordG = pf.peso * gk, kP = protG * 4, kG = gordG * 9, kR = pf.alvo - kP - kG;
-    const carbsG = kR / 4, carbsKg = carbsG / pf.peso;
-    const sexo = profile.sexo;
-    const fibra = sexo === "Masculino" ? 38 : sexo === "Feminino" ? 25 : null;
+    // kR < 0: proteína + gordura já passam das calorias-alvo → carbo fica em 0 (o app avisa)
+    const carbsG = Math.max(0, kR / 4), carbsKg = carbsG / pf.peso;
+    const tot = kP + kG + carbsG * 4 || 1;
+    // fibra: 14 g a cada 1.000 kcal (referência das diretrizes alimentares), acompanha a meta calórica
+    const fibra = Math.round((pf.alvo * 14) / 1000);
     return {
-      protG, gordG, kP, kG, kR, carbsG, carbsKg,
-      pctP: kP / pf.alvo, pctG: kG / pf.alvo, pctC: (carbsG * 4) / pf.alvo,
+      protG, gordG, kP, kG, kR, carbsG, carbsKg, insuficiente: kR < 0,
+      pctP: kP / tot, pctG: kG / tot, pctC: (carbsG * 4) / tot,
       fibra, alertaP: pk < 1.6 ? "low" : pk > 2.2 ? "high" : "ok",
-      alertaG: kG / pf.alvo < 0.2 ? "low" : "ok",
+      alertaG: kG / pf.alvo < 0.2 ? "low" : kG / pf.alvo > 0.35 ? "high" : "ok",
       protMin: pf.peso * 0.3, protMax: pf.peso * 0.4, alvo: pf.alvo
     };
   }
 
   /* ---------- alimentos ---------- */
   function foodMap(FOODS, customFoods) {
-    const m = {};
-    FOODS.forEach((f) => (m[f[0]] = { n: f[0], k: f[1], p: f[2], c: f[3], f: f[4], fib: f[5], e: f[6], src: f[7], v: f[8], custom: false }));
+    const m = Object.create(null); // nomes como "constructor"/"__proto__" não colidem com Object.prototype
+    FOODS.forEach((f) => (m[f[0]] = { n: f[0], k: f[1], p: f[2], c: f[3], f: f[4], fib: f[5], e: f[6], src: f[7], v: f[8], cat: f[9], custom: false }));
     (customFoods || []).forEach((f) => (m[f.n] = { ...f, custom: true }));
     return m;
   }
@@ -97,7 +118,7 @@
   }
 
   function statusOf(real, meta) {
-    if (real == null || meta == null || !meta) return ["", ""];
+    if (real == null || meta == null || !(meta > 0)) return ["", ""];
     const d = Math.abs(real - meta) / meta;
     if (d <= 0.05) return ["Dentro de ±5%", "p-ok"];
     return real < meta ? ["Abaixo", "p-warn"] : ["Acima", "p-bad"];
@@ -115,15 +136,25 @@
     return Math.floor(daysBetween(startISO, iso) / 7) + 1;
   }
 
-  function leituraDe(v) {
+  /* leitura da variação semanal do peso (v = fração/semana), conforme o objetivo do perfil */
+  function leituraDe(v, objetivo) {
     if (v == null) return "";
-    if (v < -0.001) return "Peso em queda: se o objetivo é ganhar massa, revise a aderência e avalie ajuste de 100 a 150 kcal.";
-    if (v < 0.001) return "Peso estável: se a aderência estiver boa, avalie ajuste de 100 a 150 kcal.";
-    if (v > 0.005) return "Ganho acima do ritmo inicial: observe a cintura.";
-    return "Ritmo dentro da referência inicial.";
+    if (objetivo === OBJ_MANTER) {
+      if (v > RITMO_MIN) return "Peso subindo: para manter o peso, reduza 100 a 150 kcal por dia e observe a cintura.";
+      if (v < -RITMO_MIN) return "Peso caindo: para manter o peso, aumente 100 a 150 kcal por dia.";
+      return "Peso estável: dentro do esperado para manter o peso ou recompor.";
+    }
+    if (v < -0.001) return "Peso em queda: se o objetivo é ganhar massa, revise a aderência e avalie aumentar 100 a 150 kcal por dia.";
+    if (v < 0.001) return "Peso estável: se a aderência estiver boa, avalie aumentar 100 a 150 kcal por dia.";
+    if (v < RITMO_MIN) return "Ganho abaixo do ritmo de referência (0,25% a 0,5% por semana): se continuar assim por 2 a 3 semanas, aumente 100 a 150 kcal por dia.";
+    if (v > RITMO_MAX) return "Ganho acima do ritmo de referência (0,25% a 0,5% por semana): observe a cintura; se ela subir junto, reduza 100 a 150 kcal por dia.";
+    return "Ritmo dentro da referência (0,25% a 0,5% por semana).";
   }
 
-  function progressData(diary) {
+  /* opts: {hoje: "AAAA-MM-DD", objetivo} — com hoje, a semana em andamento com menos de
+     MIN_PESAGENS pesagens fica "incompleta" (sem variação/leitura, e não serve de base para a seguinte) */
+  function progressData(diary, opts) {
+    const o = opts || {};
     const start = firstDate(diary);
     const byWeek = {};
     let maxW = 0;
@@ -143,17 +174,20 @@
         peso: mean((r) => num(r.peso)), cint: mean((r) => num(r.cintura)), kcal: mean((r) => num(r.kcal)),
         prot: mean((r) => num(r.prot)), sono: mean((r) => num(r.sono)),
         treinos: rows.filter((r) => r.treinou === "Sim").length, ader: mean((r) => num(r.aderencia)),
-        var: null, leitura: ""
+        nPeso: rows.filter((r) => num(r.peso) != null).length,
+        var: null, leitura: "", incompleta: false
       });
     }
+    const atual = o.hoje && start ? weekNumber(start, o.hoje) : null;
+    out.forEach((b) => { if (b.w === atual && b.nPeso > 0 && b.nPeso < MIN_PESAGENS) b.incompleta = true; });
     // variação semanal = vs. a última semana anterior que tem peso
     let prev = null;
     out.forEach((b) => {
-      if (b.peso == null) return;
+      if (b.peso == null || b.incompleta) return;
       if (prev && prev.peso) {
         const semanas = b.w - prev.w;
         b.var = (b.peso - prev.peso) / prev.peso / semanas; // normaliza por semana se houve lacuna
-        b.leitura = leituraDe(b.var);
+        b.leitura = leituraDe(b.var, o.objetivo);
       }
       prev = b;
     });
@@ -187,6 +221,7 @@
   const isObj = (o) => o != null && typeof o === "object" && !Array.isArray(o);
   const arr = (a) => (Array.isArray(a) ? a.filter(isObj) : []);
   const oneOf = (v, list) => (list.includes(v) ? v : "");
+  const BAD_KEYS = ["__proto__", "constructor", "prototype"];
 
   /* Recebe qualquer coisa (localStorage ou arquivo importado) e devolve um estado íntegro.
      Garante tipos, ids seguros (usados em atributos onclick) e datas ISO válidas. */
@@ -206,7 +241,7 @@
       S.profile = {
         nome: str(p.nome, 80), sexo: oneOf(p.sexo, ["Masculino", "Feminino"]),
         idade: numStr(p.idade), peso: numStr(p.peso), altura: numStr(p.altura),
-        atividade: str(p.atividade, 60), objetivo: str(p.objetivo, 60)
+        atividade: str(p.atividade, 60), objetivo: str(p.objetivo, 60) // validados contra as listas em perfilErros
       };
     }
     if (isObj(d.macros)) {
@@ -228,7 +263,8 @@
     });
     if (isObj(d.estr)) {
       [0, 1, 2].forEach((i) => {
-        S.estr[i] = arr(d.estr[i]).map((x) => ({ f: str(x.f, 120), q: numStr(x.q) }));
+        S.estr[i] = (Array.isArray(d.estr[i]) ? d.estr[i].slice(0, 60) : [])
+          .map((x) => (isObj(x) ? { f: str(x.f, 120), q: numStr(x.q) } : { f: "", q: "" }));
       });
     }
     S.diary = arr(d.diary)
@@ -245,14 +281,15 @@
       }));
     if (isObj(d.shop)) {
       Object.keys(d.shop).forEach((k) => {
-        const st = d.shop[k];
-        if (!isObj(st)) return;
-        S.shop[str(k, 120)] = { qtd: str(st.qtd, 20), unid: str(st.unid, 20), marcado: !!st.marcado };
+        const st = d.shop[k], key = str(k, 120);
+        if (!isObj(st) || BAD_KEYS.includes(key)) return;
+        const v = { qtd: str(st.qtd, 20), unid: str(st.unid, 20), marcado: st.marcado === true };
+        if (v.qtd || v.unid || v.marcado) S.shop[key] = v; // não guarda entradas vazias
       });
     }
     S.shopCustom = arr(d.shopCustom)
       .filter((c) => str(c.n).trim())
-      .map((c) => ({ cat: str(c.cat, 60), n: str(c.n, 120), qtd: str(c.qtd, 20), unid: str(c.unid, 20), marcado: !!c.marcado }));
+      .map((c) => ({ cat: str(c.cat, 60), n: str(c.n, 120).trim(), qtd: str(c.qtd, 20), unid: str(c.unid, 20), marcado: c.marcado === true }));
 
     // suplementos: v1 guardava o uso dos personalizados pela posição ("c0","c1"…); v2 usa o id ("c_<id>")
     const oldUsa = isObj(d.supleUsa) ? d.supleUsa : {};
@@ -262,11 +299,14 @@
       const v = oneOf(oldUsa[k], ["Sim", "Não"]);
       if (v && /^b\d+$/.test(k)) usa[k] = v;
     });
-    S.supleCustom = arr(d.supleCustom)
-      .filter((s) => str(s.n).trim())
-      .map((s, ix) => {
+    // ix = posição original (antes de descartar nomes vazios), que é o que a v1 usava nas chaves "c0","c1"…
+    S.supleCustom = (Array.isArray(d.supleCustom) ? d.supleCustom : [])
+      .map((s, ix) => [s, ix])
+      .filter(([s]) => isObj(s) && str(s.n).trim())
+      .map(([s, ix]) => {
         const id = safeId(s.id);
-        const v = oneOf(oldUsa["c_" + s.id], ["Sim", "Não"]) || (legacy ? oneOf(oldUsa["c" + ix], ["Sim", "Não"]) : "");
+        // id trocado (repetido/inválido): não herda a marcação de outro item
+        const v = (id === s.id ? oneOf(oldUsa["c_" + s.id], ["Sim", "Não"]) : "") || (legacy ? oneOf(oldUsa["c" + ix], ["Sim", "Não"]) : "");
         if (v) usa["c_" + id] = v;
         return { id, n: str(s.n, 120), f: str(s.f, 200), d: str(s.d, 120), h: str(s.h, 120), o: str(s.o, 300) };
       });
@@ -292,7 +332,8 @@
     const edits = meta.editsSinceBackup || 0;
     const out = { due: false, reason: "", days: days(meta.lastBackup), edits };
     if (!hasData) return out;
-    if (meta.snoozeUntil && Date.parse(meta.snoozeUntil) > now) return out;
+    const snooze = meta.snoozeUntil ? Date.parse(meta.snoozeUntil) : 0;
+    if (snooze > now && snooze - now <= 3 * 864e5) return out;
     if (!meta.lastBackup) {
       if (entries >= FIRST_BACKUP_ENTRIES || (days(meta.createdAt) || 0) >= FIRST_BACKUP_DAYS) { out.due = true; out.reason = "never"; }
     } else if (out.days >= BACKUP_EVERY_DAYS) { out.due = true; out.reason = "old"; }
@@ -301,7 +342,7 @@
   }
 
   return {
-    backupStatus, measuresOf, gramsFor, MIN_WEEKS, num, int, isISODate, daysBetween, calcPerfil, calcMacros, foodMap, sumItems, statusOf,
+    backupStatus, measuresOf, gramsFor, MIN_WEEKS, MIN_PESAGENS, LIM, perfilErros, isObj, num, int, isISODate, daysBetween, calcPerfil, calcMacros, foodMap, sumItems, statusOf,
     firstDate, weekNumber, leituraDe, progressData, seriesByGroup, groupBadge, defState, sanitizeState
   };
 });

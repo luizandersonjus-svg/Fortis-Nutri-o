@@ -114,17 +114,17 @@ FORTIS.SHOPPING = [
 ["Organização","Recipientes com tampa"],["Organização","Sacos para congelar"],["Organização","Etiquetas"],["Organização","Balança de cozinha"],["Organização","Garrafa de água"]
 ];
 FORTIS.SUPLE = [
- {n:"Creatina monohidratada",f:"Desempenho e força",d:"3 a 5 g/dia",h:"Qualquer horário",o:"A regularidade importa mais que o horário"},
- {n:"Whey protein",f:"Conveniência proteica",d:"Conforme o rótulo",h:"Conforme a rotina",o:"Não é obrigatório"},
+ {n:"Creatina monoidratada",f:"Desempenho e força",d:"3 a 5 g/dia",h:"Qualquer horário",o:"A regularidade importa mais que o horário. Pode aumentar 1 a 2 kg de peso por retenção de água no músculo (normal). Quem tem doença renal deve consultar um médico antes."},
+ {n:"Whey protein",f:"Conveniência proteica",d:"Conforme o rótulo",h:"Conforme a rotina",o:"Não é obrigatório; priorize a proteína da comida. Intolerantes à lactose: prefira whey isolado."},
  {n:"Proteína vegetal em pó",f:"Atingir a meta proteica",d:"Conforme o rótulo",h:"Conforme a rotina",o:"Útil em dietas vegetarianas e veganas"},
- {n:"Cafeína",f:"Atenção e desempenho",d:"Individual",h:"Evitar próximo ao sono",o:"A resposta varia entre pessoas"},
- {n:"Vitamina B12",f:"Dietas veganas",d:"Conforme orientação profissional",h:"Conforme orientação",o:"Avaliar com profissional"}
+ {n:"Cafeína",f:"Atenção e desempenho",d:"3 a 6 mg por kg de peso, cerca de 60 min antes do treino; não passar de 400 mg/dia somando café, chás, refrigerantes e pré-treinos",h:"Evitar nas 6 horas antes de dormir",o:"A resposta varia entre pessoas. Gestantes: no máximo 200 mg/dia. Evite se tiver hipertensão, arritmia, ansiedade ou insônia, ou se for menor de 18 anos, salvo orientação profissional. Cafeína pura em pó é perigosa (risco de overdose)."},
+ {n:"Vitamina B12",f:"Prevenir deficiência em dietas veganas e vegetarianas (também relevante acima dos 50 anos e para quem usa metformina ou omeprazol)",d:"Referência comum para veganos: 50 a 100 µg/dia ou 2.000 µg 1 vez por semana. Confirme com um profissional",h:"Qualquer horário",o:"Fontes vegetais não fornecem B12 confiável. Faça exame de B12 periodicamente."}
 ];
 FORTIS.BADGES5 = ["Mais massa muscular","Mais energia","Melhor recuperação","Mais disposição","Mais confiança"];
 /* Textos em linguagem simples para as opções (as chaves são os valores salvos — não alterar) */
 FORTIS.ACT_INFO = {
   "Sedentário":           {label:"Pouco ativo",          desc:"Trabalho sentado e quase nenhum exercício."},
-  "Levemente ativo":      {label:"Levemente ativo",      desc:"Treina 1 a 3 vezes por semana ou anda bastante no dia a dia."},
+  "Levemente ativo":      {label:"Levemente ativo",      desc:"Treina 1 a 2 vezes por semana ou anda bastante no dia a dia."},
   "Moderadamente ativo":  {label:"Ativo",                desc:"Treina 3 a 5 vezes por semana."},
   "Muito ativo":          {label:"Muito ativo",          desc:"Treina 6 a 7 vezes por semana ou tem trabalho físico."},
   "Extremamente ativo":   {label:"Atleta / trabalho pesado", desc:"Treina pesado 2 vezes por dia ou faz trabalho braçal intenso."}
@@ -132,7 +132,7 @@ FORTIS.ACT_INFO = {
 FORTIS.GOAL_INFO = {
   "Manutenção ou recomposição":     {label:"Manter o peso",          desc:"Come o mesmo que gasta. Para quem quer trocar gordura por músculo sem mudar o peso.", tag:""},
   "Superávit leve":                 {label:"Ganhar massa devagar",    desc:"Come um pouco a mais (+7,5%). Ganho mais limpo, com pouca gordura.", tag:"Bom para começar"},
-  "Superávit moderado":             {label:"Ganhar massa no ritmo médio", desc:"Come um pouco mais (+12,5%). Para quem é muito magro ou tem dificuldade de engordar.", tag:""},
+  "Superávit moderado":             {label:"Ganhar massa no ritmo médio", desc:"Come moderadamente a mais (+12,5%). Para quem é muito magro ou tem dificuldade de engordar.", tag:""},
   "Superávit elevado (monitorado)": {label:"Ganhar massa rápido",     desc:"Come bem mais (+17,5%). Ganho mais rápido, porém com mais gordura. Ideal com acompanhamento.", tag:""}
 };
 /* Medidas caseiras: [nome da medida, gramas por 1 medida]. Valores aproximados

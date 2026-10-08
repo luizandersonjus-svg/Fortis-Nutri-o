@@ -112,7 +112,7 @@ async function step(name, fn) {
     await page.fill("#d_peso", "61");
     await page.click("#sheet button[type=submit]");
     assert.match(await page.textContent("#sheet"), /Já existe um registro/);
-    await page.click("#sheet .btn-gold");
+    await page.click("#btnConfirmYes");
     const s = await state();
     assert.equal(s.diary.length, 1);
     assert.equal(s.diary[0].peso, "61");
@@ -139,7 +139,7 @@ async function step(name, fn) {
     const idC = s.supleCustom[2].id;
     await page.evaluate((id) => App.supleSet("c_" + id, 1), idC);
     await page.evaluate((id) => App.supleDel(id), s.supleCustom[0].id);
-    await page.click("#sheet .btn-gold");
+    await page.click("#btnConfirmYes");
     s = await state();
     assert.deepEqual(s.supleCustom.map((x) => x.n), ["B", "C"]);
     assert.equal(s.supleUsa["c_" + idC], "Sim");
@@ -169,6 +169,83 @@ async function step(name, fn) {
     const s = await state();
     assert.equal(s.plan[0].f, "Shake da Ana");
     assert.ok(!(await viewText()).includes("não encontrado"));
+  });
+
+  await step("busca de alimento por parte do nome (sem acento) e cadastro direto do modal", async () => {
+    await page.evaluate(() => { App.go("plano"); App.segPlano("plano"); });
+    const n0 = (await state()).plan.length;
+    await page.click("text=＋ Adicionar alimento");
+    await page.waitForFunction(() => document.activeElement && document.activeElement.id === "m_m"); // modal terminou de abrir
+    await page.selectOption("#m_m", "Jantar");
+    await page.type("#m_f", "frango peito");
+    const opt = page.locator(".acopt", { hasText: "Peito de frango grelhado" });
+    await opt.waitFor(); await opt.click();
+    assert.equal(await page.inputValue("#m_f"), "Peito de frango grelhado");
+    assert.equal(await page.isVisible(".acbox"), false);
+    await page.selectOption("#m_u", ""); await page.fill("#m_n", "120");
+    await page.click("#sheet button[type=submit]");
+    let s = await state(); assert.equal(s.plan.length, n0 + 1);
+    assert.deepEqual([s.plan[n0].m, s.plan[n0].f, s.plan[n0].q], ["Jantar", "Peito de frango grelhado", "120"]);
+    // texto parcial com um único resultado: completa e pede confirmação antes de salvar
+    await page.click("text=＋ Adicionar alimento");
+    await page.fill("#m_f", "tilapia"); await page.fill("#m_n", "100");
+    await page.click("#sheet button[type=submit]");
+    assert.equal(await page.inputValue("#m_f"), "Tilápia grelhada");
+    assert.equal((await state()).plan.length, n0 + 1);
+    await page.evaluate(() => App.close());
+    // alimento inexistente: cadastra pelo próprio modal e volta com ele escolhido
+    await page.click("text=＋ Adicionar alimento");
+    await page.waitForFunction(() => document.activeElement && document.activeElement.id === "m_m"); // modal terminou de abrir
+    await page.selectOption("#m_m", "Ceia");
+    await page.fill("#m_n", "40"); await page.type("#m_f", "Granola XYZ");
+    await page.click(".acnew");
+    assert.equal(await page.inputValue("#f_n"), "Granola XYZ");
+    await page.fill("#f_k", "420");
+    await page.click("#sheet button[type=submit]");
+    assert.equal(await page.inputValue("#m_f"), "Granola XYZ");
+    assert.equal(await page.inputValue("#m_m"), "Ceia");
+    assert.equal(await page.inputValue("#m_n"), "40");
+    await page.click("#sheet button[type=submit]");
+    s = await state(); const it = s.plan[s.plan.length - 1];
+    assert.deepEqual([it.m, it.f, it.q], ["Ceia", "Granola XYZ", "40"]);
+    assert.ok(s.customFoods.some((f) => f.n === "Granola XYZ" && f.k === 420));
+  });
+
+  await step("tabela TACO completa: busca, adiciona e filtra por categoria", async () => {
+    await page.evaluate(() => { App.go("plano"); App.segPlano("plano"); });
+    await page.click("text=＋ Adicionar alimento");
+    await page.waitForFunction(() => document.activeElement && document.activeElement.id === "m_m");
+    await page.type("#m_f", "banana prata");
+    const opt = page.locator(".acopt", { hasText: "Banana, prata, crua" });
+    await opt.waitFor(); await opt.click();
+    await page.fill("#m_n", "100");
+    assert.match(await page.textContent("#m_prev"), /98 kcal/);
+    await page.click("#sheet button[type=submit]");
+    const s = await state(); assert.equal(s.plan[s.plan.length - 1].f, "Banana, prata, crua");
+    await page.evaluate(() => App.segPlano("alimentos"));
+    await page.selectOption("#foodCat", "Pescados e frutos do mar");
+    const txt = await page.textContent("#foodlist");
+    assert.match(txt, /Sardinha/); assert.doesNotMatch(txt, /Frango/);
+    await page.fill("#foodSearch", "salmao"); await page.dispatchEvent("#foodSearch", "input");
+    assert.match(await page.textContent("#foodlist"), /Salmão/);
+    await page.selectOption("#foodCat", ""); await page.fill("#foodSearch", ""); await page.dispatchEvent("#foodSearch", "input");
+  });
+
+  await step("registro do dia: ajuda no próprio formulário e preencher com os valores do plano", async () => {
+    await page.evaluate(() => App.mDiary());
+    await page.waitForFunction(() => document.activeElement && document.activeElement.id === "d_data"); // modal terminou de abrir
+    await page.fill("#d_peso", "72.5");
+    await page.click("button[aria-label='Saiba mais: Calorias que você comeu']");
+    assert.match(await page.textContent("#hb_dkcal"), /realmente comeu/);
+    assert.equal(await page.inputValue("#d_peso"), "72.5", "abrir a ajuda não apaga o que foi digitado");
+    await page.click("button[aria-label='Saiba mais: Calorias que você comeu']");
+    assert.equal(await page.$("#hb_dkcal"), null, "segundo toque fecha a ajuda");
+    const btn = page.locator("text=Usar valores do meu plano");
+    const [, kcal, prot] = (await btn.textContent()).match(/\(([\d.]+) kcal • ([\d.]+) g/);
+    await btn.click();
+    assert.equal(await page.inputValue("#d_kcal"), kcal.replace(/\./g, ""));
+    assert.equal(await page.inputValue("#d_prot"), prot.replace(/\./g, ""));
+    await page.evaluate(() => App.close());
   });
 
   await step("adicionar por medida caseira (2 ovos) calcula as gramas e permite mudar a quantidade", async () => {
@@ -201,6 +278,40 @@ async function step(name, fn) {
     assert.equal(last.q, "150"); assert.equal(last.u, undefined);
   });
 
+  await step("auditoria: Sobre sem rede externa, '?' após editar o perfil, nome longo e arquivo que não é backup", async () => {
+    // Sobre: capa local, nenhuma requisição para fora do app
+    const externos = [];
+    const onReq = (r) => { if (!r.url().startsWith(base) && !r.url().startsWith("data:")) externos.push(r.url()); };
+    page.on("request", onReq);
+    await page.evaluate(() => App.go("sobre"));
+    await page.waitForFunction(() => { const i = document.querySelector(".hero img"); return i && i.complete && i.naturalWidth > 0; });
+    page.off("request", onReq);
+    assert.deepEqual(externos, []);
+    // Perfil: o "?" do resultado funciona logo depois de editar um campo
+    await page.evaluate(() => App.go("perfil"));
+    await page.fill("#pf_peso", "82");
+    await page.click("#pfResult button[aria-label^='Saiba mais: Gasto em repouso']");
+    assert.match(await page.textContent("#sheet"), /Gasto em repouso/);
+    await page.evaluate(() => App.close());
+    await page.fill("#pf_altura", "1.91");
+    assert.match(await page.textContent("#pfResult"), /altura entre 100 e 250 cm/);
+    assert.equal(await page.getAttribute("#pf_altura", "aria-invalid"), "true");
+    await page.fill("#pf_altura", "175");
+    // Lista de compras: nome longo sem espaços não cria rolagem lateral
+    await page.evaluate(() => App.go("compras"));
+    await page.click("#btnShopAdd");
+    await page.fill("#s_n", "X".repeat(120));
+    await page.click("#sheet button[type=submit]");
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
+    // Backup: um JSON qualquer com "profile" não substitui os dados
+    const file = path.join(require("node:os").tmpdir(), "fortis-nao-backup.json");
+    fs.writeFileSync(file, JSON.stringify({ profile: {}, foo: 1 }));
+    await page.evaluate(() => App.go("backup"));
+    await page.setInputFiles("#impFile", file);
+    await page.waitForFunction(() => /não parece um backup/.test(document.getElementById("toast").textContent));
+    assert.equal(await page.isVisible("#btnConfirmYes"), false);
+  });
+
   await step("importar backup malicioso não executa código e não quebra o app", async () => {
     const evil = {
       profile: { nome: "<img src=x onerror=window.__pwned=1>" }, onboarded: true,
@@ -211,7 +322,7 @@ async function step(name, fn) {
     fs.writeFileSync(file, JSON.stringify(evil));
     await page.evaluate(() => App.go("backup"));
     await page.setInputFiles("#impFile", file);
-    await page.click("#sheet .btn-gold");
+    await page.click("#btnConfirmYes");
     for (const v of ["inicio", "diario", "suple", "progresso"]) await page.evaluate((x) => App.go(x), v);
     await page.evaluate(() => App.go("diario"));
     await page.click("text=Editar");
@@ -248,7 +359,7 @@ async function step(name, fn) {
   await step("apagar tudo volta ao onboarding sem recarregar", async () => {
     await page.evaluate(() => App.go("backup"));
     await page.click("text=Apagar todos os dados");
-    await page.click("#sheet .btn-gold");
+    await page.click("#btnConfirmYes");
     assert.match(await viewText(), /sem passar fome/i);
   });
 
